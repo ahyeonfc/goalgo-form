@@ -1,9 +1,10 @@
-// 코칭 결과: 요약 → 동작별 코칭 카드 → 관절 선 다시 보기 → 장면 → 메모 → 분석 정보
+// 코칭 결과: 요약 + 위쪽 탭(코칭 · 다시 보기 · 계획 · 자세히). 다시 보기는 숨겨도 계속 살려 둬 장면 이동이 바로 됨
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as S from '../store.js';
 import { MOTION_KO } from '../engine/coach.js';
 import { MOTION_IC, VIEW_KO } from '../config';
 import { recompute } from '../lib/pipeline';
+import { markDeleted, autoSync } from '../lib/drive';
 import { fmtT, hhmm, josa } from '../lib/fmt';
 import type { Rec, Seg, Shot } from '../lib/types';
 import { Replay, type ReplayHandle } from './Replay';
@@ -22,6 +23,7 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
   const [rec, setRec] = useState(rec0);
   const [memo, setMemo] = useState(rec0.memo || '');
   const replay = useRef<ReplayHandle>(null);
+  const [tab, setTab] = useState<'coach' | 'replay' | 'plan' | 'more'>('coach');
   const urls = useBlobUrls(rec.shots);
   const [history, setHistory] = useState<Rec[]>([]);
   useEffect(() => { S.resList().then(setHistory); }, []);
@@ -33,7 +35,7 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
   const g = r.general && r.general.span ? r.general : null;
   const nFix = (g?.fixes.length || 0) + segs.reduce((a, x) => a + x.coach.fixes.length, 0), nGood = (g?.good.length || 0) + segs.reduce((a, x) => a + x.coach.good.length, 0);
   const shotIdx = (k: number, title: string) => (rec.shots || []).findIndex(x => x.seg === k && x.fix === title);
-  const jump = (t: number) => { document.getElementById('replay')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); replay.current?.seek(t - 0.6, true); };
+  const jump = (t: number) => { setTab('replay'); window.scrollTo(0, 0); setTimeout(() => replay.current?.seek(t - 0.6, true), 50); };
   const others = (rec.shots || []).map((s, i) => ({ s, u: urls[i] })).filter(x => !x.s.fix);
 
   return (
@@ -46,7 +48,14 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
           <span className="chip">🧍 몸 {Math.round(r.poseSeen * 100)}%</span><span className="chip">⚽ 공 {Math.round(r.ballSeen * 100)}%</span>
         </div>
       </div>
+      <div className="rtabs">
+        {([['coach', '🧑‍🏫 코칭'], ['replay', '🦴 다시 보기'], ['plan', '📅 계획'], ['more', '➕ 자세히']] as const).map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => { setTab(k); window.scrollTo(0, 0); }}>{l}</button>)}
+      </div>
+
+      <div hidden={tab !== 'coach'}>
       {(r.notes || []).map((n, i) => <div key={i} className={'note' + (n.kind === 'warn' ? ' warn' : '')}>{n.text}</div>)}
+      {!g && !segs.length && <div className="nofix">코칭할 장면을 찾지 못했어요. "🦴 다시 보기"에서 몸·공이 제대로 잡혔는지 확인해 보세요.</div>}
+      {!g && segs.length > 0 && <div className="nofix">동작별 코칭은 "➕ 자세히"에 있어요.</div>}
 
       {g && (
         <div className="card coach">
@@ -66,12 +75,23 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
           </div>
         </div>
       )}
+      <div className="card"><h2>📝 메모</h2>
+        <textarea rows={3} placeholder="예: 왼발이 자꾸 늦음, 코치님이 무릎 더 굽히래" value={memo} onChange={e => setMemo(e.target.value)} />
+        <button className="sec" onClick={async () => { const n = { ...rec, memo: memo.trim(), editedAt: Date.now() }; await S.resPut(n); setRec(n); autoSync(); ctx.toast('메모를 일지에 저장했어요'); }}>메모 저장</button></div>
+      </div>
+
+      <div hidden={tab !== 'plan'}>
+      {!(g?.plan && g.plan.length) && <p className="empty">이 영상으로는 훈련 계획을 만들지 못했어요.<br />고칠 점이 나온 영상에서 계획이 생겨요.</p>}
       {g?.plan && g.plan.length > 0 && (
         <div className="card plan"><h2>📅 이번 주 훈련 계획 <small>하루 15~20분</small></h2>
           {g.plan.map(d => <div className="pday" key={d.day}><span>{d.day}</span><div><b>{d.title}</b><p>{d.text}</p></div></div>)}
         </div>
       )}
-      {g && segs.length > 0 && <h3 className="h3">동작별 자세히 (참고)</h3>}
+      {g?.drill && <div className="card"><h2>🏋️ 오늘의 연습</h2><p><b>{g.drill.name}</b></p><p className="sub">{g.drill.text}</p></div>}
+      </div>
+
+      <div hidden={tab !== 'more'}>
+      {segs.length > 0 && <h3 className="h3">동작별 자세히 (참고)</h3>}
       {segs.map((sg, k) => (
         <div className="card coach" key={k}>
           <div className="hd"><span className="ic">{MOTION_IC[sg.motion]}</span><div><b>{MK[sg.motion]}</b><span>{fmtT(sg.t0)} ~ {fmtT(sg.t1)} · {VIEW_KO[sg.view || 'unknown']}에서</span></div></div>
@@ -89,16 +109,13 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
           </div>
         </div>
       ))}
-
-      <div className="card" id="replay"><h2>🦴 관절 선으로 다시 보기</h2><Replay ref={replay} rec={rec} ctx={ctx} /></div>
-
       {others.length > 0 && <div className="card"><h2>📸 장면</h2><div className="shots">{others.map(({ s, u }) => <figure key={s.t}><img src={u} alt="" /><figcaption>{s.cap}</figcaption></figure>)}</div></div>}
-
-      <div className="card"><h2>📝 메모</h2>
-        <textarea rows={3} placeholder="예: 왼발이 자꾸 늦음, 코치님이 무릎 더 굽히래" value={memo} onChange={e => setMemo(e.target.value)} />
-        <button className="sec" onClick={async () => { const n = { ...rec, memo: memo.trim() }; await S.resPut(n); setRec(n); ctx.toast('메모를 일지에 저장했어요'); }}>메모 저장</button></div>
-
       <Info ctx={ctx} rec={rec} onRecalc={setRec} />
+      </div>
+
+      <div hidden={tab !== 'replay'}>
+        <div className="card" id="replay"><h2>🦴 관절 선으로 다시 보기</h2><Replay ref={replay} rec={rec} ctx={ctx} /></div>
+      </div>
     </>
   );
 }
@@ -111,7 +128,7 @@ function Info({ ctx, rec, onRecalc }: { ctx: Ctx; rec: Rec; onRecalc: (r: Rec) =
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(meta, null, 1)], { type: 'application/json' }));
     a.download = `goalgo-form_${rec.lesson}_${hhmm(rec.takenAt).replace(':', '')}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
-  const del = async () => { if (!confirm('이 기록을 지울까요? 갤러리 영상은 그대로 남아요.')) return; await S.resDel(rec.id); ctx.back(); };
+  const del = async () => { if (!confirm('이 기록을 지울까요? 갤러리 영상은 그대로 남아요.')) return; await S.resDel(rec.id); await markDeleted(rec.id); ctx.back(); };
   return (
     <div className="card">
       <details><summary>분석 정보</summary><table><tbody>

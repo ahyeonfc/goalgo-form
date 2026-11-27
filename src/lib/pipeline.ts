@@ -33,6 +33,10 @@ function getVideo() {
 
 export async function runAnalysis(opt: {
   blob: Blob; name: string; lastMod?: number; profile: Profile; settings: Settings; criteria: Criteria;
+  /** 분석할 구간(초). 없으면 전체 */
+  range?: { t0: number; t1: number };
+  /** 분석할 사람(미리보기에서 누른 점, 화면 비율 0~1). 없으면 가장 크게 보이는 사람 */
+  target?: { x: number; y: number };
   canvas: HTMLCanvasElement; job: Job; onProgress: (p: Progress) => void;
 }): Promise<Rec> {
   const { blob, name, profile, settings, criteria, canvas, job, onProgress } = opt;
@@ -45,11 +49,12 @@ export async function runAnalysis(opt: {
     const info: any = (await mp4Info(blob).catch(() => null)) || {};
     const srcFps: number = info.mainFps && isFinite(info.mainFps) ? info.mainFps : 30;
     const dur = v.duration;
+    const r0 = Math.max(0, opt.range?.t0 ?? 0), r1 = Math.min(dur, opt.range?.t1 ?? dur);
     const takenAt: number = info.createdMs || opt.lastMod || (blob as File).lastModified || Date.now();
     const notes: { kind: 'info'; text: string }[] = [];
     if (info.mixed) notes.push({ kind: 'info', text: `장면 간격이 섞인 영상이에요(슬로모션 구간이 있을 수 있음, 가장 촘촘한 곳 ${Math.round(info.maxFps)}fps). 시간 지표는 확인이 필요해요.` });
 
-    scanner = new Scanner(v, canvas, settings);
+    scanner = new Scanner(v, canvas, { ...settings, target: opt.target });
     await scanner.init((t: string) => onProgress({ step: 0, pct: 0, text: t }));
     if (scanner.m.delegate !== settings.delegate) notes.push({ kind: 'info', text: '그래픽(GPU) 계산이 안 돼 CPU 로 분석했어요.' });
     const step = Math.min(+settings.step, srcFps);
@@ -63,7 +68,7 @@ export async function runAnalysis(opt: {
       await new Promise(r => setTimeout(r, 0));
     };
     const dense = srcFps > step * 1.5;
-    let raw: RawFrame[] = await scanner.scanTimes(grid(0, dur - 0.001, step), onFrame(0, dense ? 0.7 : 0.95));
+    let raw: RawFrame[] = await scanner.scanTimes(grid(r0, r1 - 0.001, step), onFrame(0, dense ? 0.7 : 0.95));
     if (job.stop || scanner.stop) throw new Error('멈췄어요');
     const past = (await S.resList()).filter((r: Rec) => r.takenAt < takenAt && r.result.free).map((r: Rec) => r.result);
     const frame = { w: scanner.W, h: scanner.H };
@@ -73,9 +78,10 @@ export async function runAnalysis(opt: {
     // 2차: 슬로모션이면 찾은 사건 앞뒤만 모든 장면
     if (dense && !job.stop) {
       const evT = [...result.segs.flatMap(x => x.marks.map(e => e.t)), ...(result.general?.marks || []).map(e => e.t)];
-      const more = denseTimes(evT, srcFps, dur, raw.map(f => f.t));
+      const more = denseTimes(evT, srcFps, r1, raw.map(f => f.t)).filter((t: number) => t >= r0);
       if (more.length) {
         scanner.stop = false;
+        scanner.anchors = raw.filter(f => (f as any).pb).map(f => [f.t, (f as any).pb]);
         const add: RawFrame[] = await scanner.scanTimes(more, onFrame(0.7, 0.25));
         raw = [...raw, ...add].sort((a, b) => a.t - b.t);
         result = engine(raw);
@@ -85,7 +91,7 @@ export async function runAnalysis(opt: {
     const shots = await makeShots(v, scanner.W, raw, result);
     result.notes = [...notes, ...result.notes];
     result.scan = { frame, srcFps: +srcFps.toFixed(2), step, frames: raw.length, wallSec: +((performance.now() - t0) / 1000).toFixed(1), w: v.videoWidth, h: v.videoHeight, set: { ...settings, delegate: scanner.m.delegate }, mp4: info };
-    const rec: Rec = { id: `v_${takenAt}_${blob.size}`, name, size: blob.size, takenAt, lesson: dateKey(takenAt), analyzedAt: Date.now(), appVer: APP_VER, result, rawGz: await S.gz(raw), shots };
+    const rec: Rec = { range: opt.range ? { t0: +r0.toFixed(2), t1: +r1.toFixed(2) } : undefined, id: `v_${takenAt}_${blob.size}` + (opt.range ? `_${Math.round(r0)}-${Math.round(r1)}` : ''), name, size: blob.size, takenAt, lesson: dateKey(takenAt), analyzedAt: Date.now(), appVer: APP_VER, result, rawGz: await S.gz(raw), shots };
     await S.resPut(rec);
     S.persist();
     return rec;
@@ -125,7 +131,7 @@ export async function recompute(rec: Rec, profile: Profile, criteria: Criteria):
   const r = rec.result;
   const nr = analyzeFree(raw, { heightCm: profile.heightCm, fps: r.fps, criteria, history: past, profile, frame: r.scan?.frame }) as unknown as FreeResult;
   nr.scan = r.scan; nr.notes = [...(r.notes || []).filter(n => n.kind === 'info' && /CPU|섞인/.test(n.text)), ...nr.notes];
-  const out = { ...rec, result: nr };
+  const out = { ...rec, result: nr, editedAt: Date.now() };
   await S.resPut(out);
   return out;
 }

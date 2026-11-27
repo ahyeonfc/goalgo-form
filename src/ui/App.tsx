@@ -5,13 +5,13 @@ import { DEF_SET, type Profile, type Settings } from '../config';
 import { loadCriteria, type Criteria } from '../lib/pipeline';
 import type { Rec } from '../lib/types';
 import { Setup } from './Setup';
-import { Home } from './Home';
+import { Home, Journal, Growth } from './Home';
 import { Run } from './Run';
 import { Result } from './Result';
 import { SettingsView } from './SettingsView';
 
 export type View =
-  | { name: 'boot' } | { name: 'setup' } | { name: 'home' } | { name: 'settings' }
+  | { name: 'boot' } | { name: 'setup' } | { name: 'home' } | { name: 'journal' } | { name: 'growth' } | { name: 'settings' }
   | { name: 'run'; blob: Blob; fileName: string; lastMod?: number; inboxId?: number }
   | { name: 'result'; rec: Rec };
 
@@ -78,10 +78,13 @@ export function App() {
     setSettings: s => { setSettings(s); S.kvSet('settings', s); },
     reloadCriteria: async () => { const c = await loadCriteria(); setCriteria(c); return c; },
   };
-  const title = view.name === 'settings' ? '설정' : view.name === 'run' ? '분석 중' : view.name === 'result' ? resultTitle(view.rec) : '골고 폼';
+  const tab = ['home', 'journal', 'growth', 'settings'].includes(view.name) ? view.name : null;
+  const title = view.name === 'settings' ? '설정' : view.name === 'journal' ? '코칭 일지' : view.name === 'growth' ? '성장' : view.name === 'run' ? '분석 중' : view.name === 'result' ? resultTitle(view.rec) : '골고 폼';
   return (
-    <Shell title={title} home={view.name === 'home'} onBack={view.name === 'run' ? undefined : back} onGear={view.name === 'home' ? () => go({ name: 'settings' }) : undefined} toast={toastText}>
+    <Shell title={title} home={!!tab} onBack={view.name === 'run' || tab ? undefined : back} toast={toastText} tab={tab} onTab={n => go({ name: n } as View, false)}>
       {view.name === 'home' && <Home ctx={ctx} />}
+      {view.name === 'journal' && <Journal ctx={ctx} />}
+      {view.name === 'growth' && <Growth />}
       {view.name === 'run' && <Run ctx={ctx} job={view} />}
       {view.name === 'result' && <Result ctx={ctx} rec={view.rec} key={view.rec.id + (view.rec.analyzedAt || '')} />}
       {view.name === 'settings' && <SettingsView ctx={ctx} />}
@@ -95,15 +98,16 @@ function resultTitle(rec: Rec) {
   return ms.length ? ms.map(m => (MOTION_KO as Record<string, string>)[m]).join(' · ') : '코칭 결과';
 }
 
-function Shell(p: { title: string; home?: boolean; onBack?: () => void; onGear?: () => void; toast?: string | null; children: React.ReactNode }) {
+const TABS = [['home', '🎥', '분석'], ['journal', '📒', '일지'], ['growth', '🌱', '성장'], ['settings', '⚙︎', '설정']] as const;
+function Shell(p: { title: string; home?: boolean; onBack?: () => void; toast?: string | null; tab?: string | null; onTab?: (n: 'home' | 'journal' | 'growth' | 'settings') => void; children: React.ReactNode }) {
   return (
     <>
       <header className="top">
         {!p.home && p.onBack && <button className="icon" aria-label="뒤로" onClick={p.onBack}>‹</button>}
         <h1>{p.home && <img src="icons/icon-192.png" alt="" />}{p.title}</h1>
-        {p.onGear && <button className="icon" aria-label="설정" onClick={p.onGear}>⚙︎</button>}
       </header>
-      <main>{p.children}</main>
+      <main className={p.tab ? 'with-nav' : ''}>{p.children}</main>
+      {p.tab && <nav className="bnav">{TABS.map(([n, ic, l]) => <button key={n} className={p.tab === n ? 'on' : ''} onClick={() => p.onTab?.(n)}><span>{ic}</span>{l}</button>)}</nav>}
       {p.toast && <div id="toast">{p.toast}</div>}
     </>
   );

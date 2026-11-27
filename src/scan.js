@@ -12,7 +12,7 @@ async function models(set) {
   const { FilesetResolver, PoseLandmarker, ObjectDetector } = await import(/* @vite-ignore */ `${CDN}/vision_bundle.mjs`);
   if (!vision) vision = await FilesetResolver.forVisionTasks(`${CDN}/wasm`);
   const mk = async delegate => {
-    const pose = await PoseLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: POSE_URL(set.pose), delegate }, runningMode: 'VIDEO', numPoses: 1 });
+    const pose = await PoseLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: POSE_URL(set.pose), delegate }, runningMode: 'VIDEO', numPoses: 4, minPoseDetectionConfidence: 0.4 }); // 여러 사람을 찾고 그중 분석할 사람을 이어서 따라간다
     const ball = await ObjectDetector.createFromOptions(vision, { baseOptions: { modelAssetPath: BALL_URL(set.ball), delegate }, runningMode: 'VIDEO', scoreThreshold: 0.2, categoryAllowlist: ['sports ball'], maxResults: 3 });
     // 확대해서 한 번 더 보는 공 찾기(사람 주변만 잘라 크게 봄). 영상 모드는 시각이 이어져야 해서 따로 하나 둔다
     const ball2 = await ObjectDetector.createFromOptions(vision, { baseOptions: { modelAssetPath: BALL_URL(set.ball), delegate }, runningMode: 'VIDEO', scoreThreshold: 0.15, categoryAllowlist: ['sports ball'], maxResults: 3 });
@@ -32,6 +32,26 @@ function seekTo(video, t) {
 
 // 공 후보 중 고르기(바닥에 다른 공이 여러 개 있어도 쓰는 공을 고르게):
 // 점수 = 모델 점수 − 사람 몸(관절 상자)에서 떨어진 거리 − 앞 장면 공에서 떨어진 거리. 거리는 사람 키 기준
+// 분석할 사람 고르기: 처음엔 사용자가 누른 점(target, 화면 비율 0~1)에 가장 가까운 사람, 없으면 가장 크게 보이는 사람.
+// 그 뒤로는 앞 장면의 그 사람과 위치·크기가 가장 이어지는 사람(키 대비 거리)을 고른다. 다른 사람에게 넘어가지 않게.
+function personBox(lm) {
+  const vis = lm.filter(p => (p.visibility ?? 0) >= 0.5); const use = vis.length >= 4 ? vis : lm;
+  const xs = use.map(p => p.x), ys = use.map(p => p.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, h: Math.max(0.02, y1 - y0), area: (x1 - x0) * (y1 - y0) };
+}
+function pickPerson(all, track, target) {
+  if (!all || !all.length) return null;
+  const boxes = all.map((lm, i) => ({ i, ...personBox(lm) }));
+  let best;
+  if (track) best = boxes.reduce((a, b) => (Math.hypot(b.cx - track.cx, b.cy - track.cy) / track.h + Math.abs(Math.log(b.h / track.h)) < Math.hypot(a.cx - track.cx, a.cy - track.cy) / track.h + Math.abs(Math.log(a.h / track.h)) ? b : a));
+  else if (target) best = boxes.reduce((a, b) => (Math.hypot(b.cx - target.x, b.cy - target.y) < Math.hypot(a.cx - target.x, a.cy - target.y) ? b : a));
+  else best = boxes.reduce((a, b) => (b.area > a.area ? b : a));
+  // 앞 사람과 너무 멀면(키의 1.2배 넘게 순간이동) 그 장면은 다른 사람으로 보고 비운다
+  if (track && Math.hypot(best.cx - track.cx, best.cy - track.cy) > 1.2 * track.h) return { lm: null, box: null };
+  return { lm: all[best.i], box: best };
+}
+
 function pickBall(cands, prev, body, statics = [], feet = []) {
   if (!cands.length) return null;
   const H = body ? body.h : null;
@@ -66,7 +86,12 @@ export class Scanner {
     this.mono += 33; // MediaPipe 영상 모드는 시각이 늘 늘어나야 함
     const pr = this.m.pose.detectForVideo(this.cv, this.mono);
     const br = this.m.ball.detectForVideo(this.cv, this.mono);
-    const lm = pr.landmarks && pr.landmarks[0];
+    // 2차 훑기(건너뛰며 보기): 1차에서 그 시각 근처에 고른 사람 위치를 기준으로
+    if (this.anchors && this.anchors.length) { let a = this.anchors[0]; for (const x of this.anchors) if (Math.abs(x[0] - t) < Math.abs(a[0] - t)) a = x; if (Math.abs(a[0] - t) <= 0.5) this.track = a[1]; }
+    const pick = pickPerson(pr.landmarks, this.track, this.set.target);
+    const lm = pick && pick.lm;
+    if (pick && pick.box) { this.track = pick.box; this.lost = 0; }
+    else if (this.track && ++this.lost > 15) this.track = null; // 15장 넘게 못 찾으면 처음부터 다시 고름(사용자가 누른 점 기준)
     const kp = lm ? lm.map(p => [+(p.x * this.W).toFixed(1), +(p.y * this.H).toFixed(1), +(p.visibility ?? 0).toFixed(2)]) : null;
     let cands = (br.detections || []).map(d => toCand(d));
     // 사람 주변 상자(관절): 옆으로 키의 0.6배, 위로 0.8배(리프팅 공), 아래로 0.15배 넓혀 원본 화질에서 잘라 다시 찾기
@@ -95,7 +120,8 @@ export class Scanner {
     for (let k = st.length - 1; k >= 0; k--) if (this.mono - st[k].seen > 33 * 15) st.splice(k, 1); // 15장 넘게 안 보이면 잊음
     const feet = kp ? [27, 28, 31, 32].map(j => kp[j]).filter(p => p[2] >= 0.5) : [];
     const ball = pickBall(cands, prevBall, body, st, feet);
-    return { t: +t.toFixed(4), kp, ball: ball && { x: +ball.x.toFixed(1), y: +ball.y.toFixed(1), r: +ball.r.toFixed(1), conf: +ball.conf.toFixed(2) } };
+    const pb = pick && pick.box ? { cx: +pick.box.cx.toFixed(4), cy: +pick.box.cy.toFixed(4), h: +pick.box.h.toFixed(4) } : null;
+    return { t: +t.toFixed(4), pb, kp, ball: ball && { x: +ball.x.toFixed(1), y: +ball.y.toFixed(1), r: +ball.r.toFixed(1), conf: +ball.conf.toFixed(2) } };
   }
   // times 순서대로 훑기. onFrame(장면, 진행률)
   async scanTimes(times, onFrame) {

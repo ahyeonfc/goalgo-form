@@ -16,7 +16,10 @@ export const Replay = forwardRef<ReplayHandle, { rec: Rec; ctx: Ctx }>(function 
   const [playing, setPlaying] = useState(false);
   const head = useRef<HTMLSpanElement>(null);
   const v = useRef<HTMLVideoElement>(null), cv = useRef<HTMLCanvasElement>(null);
-  const r = rec.result, dur = r.dur || 1;
+  const r = rec.result;
+  // 시간 띠는 실제 영상 길이 기준(구간만 분석한 기록도 영상 시각 그대로라 맞게 그려짐)
+  const [vdur, setVdur] = useState(0);
+  const dur = vdur || (rec.range ? rec.range.t1 : r.dur) || 1;
   const marks = (r.segs || []).flatMap(s => s.marks);
   const pc = (t: number) => `${(100 * t / dur).toFixed(2)}%`;
 
@@ -65,7 +68,7 @@ export const Replay = forwardRef<ReplayHandle, { rec: Rec; ctx: Ctx }>(function 
     <>
       <div className="player">
         <video ref={v} src={url} playsInline muted preload="auto" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}
-          onLoadedMetadata={e => { const el = e.currentTarget; if (cv.current) { cv.current.width = el.videoWidth; cv.current.height = el.videoHeight; } }} />
+          onLoadedMetadata={e => { const el = e.currentTarget; setVdur(el.duration); if (rec.range) el.currentTime = rec.range.t0; if (cv.current) { cv.current.width = el.videoWidth; cv.current.height = el.videoHeight; } }} />
         <canvas ref={cv} />
       </div>
       <div className="pctl">
@@ -74,6 +77,7 @@ export const Replay = forwardRef<ReplayHandle, { rec: Rec; ctx: Ctx }>(function 
         <button className={pose ? 'on' : ''} onClick={() => setPose(p => !p)}>🦴 관절 선</button>
       </div>
       <div className="tl" onClick={e => { const rc = e.currentTarget.getBoundingClientRect(); if (v.current) v.current.currentTime = (e.clientX - rc.left) / rc.width * dur; }}>
+        {rec.range && <span className="band" style={{ left: pc(rec.range.t0), width: pc(rec.range.t1 - rec.range.t0) }} />}
         {(r.segs || []).map((s, i) => <span key={i} className="band" style={{ left: pc(s.t0), width: pc(Math.max(0.05, s.t1 - s.t0)) }} />)}
         {marks.map((m, i) => <i key={i} className={m.foot || 'u'} style={{ left: pc(m.t) }} />)}
         {(r.segs || []).flatMap(s => s.drops || []).map((t, i) => <i key={'d' + i} className="drop" style={{ left: pc(t) }} />)}

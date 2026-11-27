@@ -12,5 +12,5 @@ export interface FreeResult {
   calib?: { notes: string[] };
 }
 export interface Shot { t: number; cap: string; blob: Blob; seg?: number; fix?: string }
-export interface Rec { id: string; name: string; size: number; takenAt: number; lesson: string; analyzedAt?: number; appVer?: string; result: FreeResult & Record<string, any>; rawGz?: Blob; shots?: Shot[]; memo?: string; nShots?: number }
+export interface Rec { range?: { t0: number; t1: number }; id: string; name: string; size: number; takenAt: number; lesson: string; analyzedAt?: number; appVer?: string; result: FreeResult & Record<string, any>; rawGz?: Blob; shots?: Shot[]; memo?: string; editedAt?: number; nShots?: number }
 export interface RawFrame { t: number; kp: [number, number, number][] | null; ball: { x: number; y: number; r: number; conf: number } | null }

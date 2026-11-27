@@ -42,16 +42,16 @@ src/
   engine/timescale.js        슬로모션 배율(떨어지는 공 가속도)
   engine/general.js          동작과 상관없는 전체 코칭(결과 맨 위)
   engine/ballonly.js         몸이 안 보일 때 공 움직임만으로 코칭
-  ui/                        React 화면: App(화면 전환·뒤로 가기), Setup, Home, Run, Result, Replay(관절 선 다시 보기), SettingsView, app.css
-  lib/                       pipeline.ts(영상 → 원재료 → 엔진 → 장면 사진 → 저장, 다시 계산), draw.ts(관절 선), fmt.ts, types.ts(결과 형식)
-  scan.js                    MediaPipe 자세 + 공(EfficientDet-Lite2 전체 + 사람 주변 확대, 몸 가깝고 이어지는 공, 가만히 있는 공 거르기)
+  ui/                        React 화면: App(화면 전환·뒤로 가기·아래 메뉴 분석/일지/성장/설정), Setup, Home(Home·Journal·Growth), Run(① RangePicker 구간·사람 고르기 → ② 분석 중), Result(위쪽 탭 코칭/다시 보기/계획/자세히), Replay(관절 선 다시 보기), SettingsView(기록 내보내기·가져오기), app.css
+  lib/                       pipeline.ts(영상 → 원재료 → 엔진 → 장면 사진 → 저장, 다시 계산, range·target), backup.ts(기록 파일 .goalgoform = gzip JSON, 늦게 분석한 쪽 남김), draw.ts(관절 선), fmt.ts, types.ts(결과 형식)
+  scan.js                    MediaPipe 자세(numPoses 4, 고른 사람·이어지는 사람 따라가기, 순간이동이면 그 장면 버림) + 공(EfficientDet-Lite2 전체 + 사람 주변 확대, 몸 가깝고 이어지는 공, 가만히 있는 공 거르기)
   store.js, mp4info.js       IndexedDB(kv·inbox·results), MP4 정보
   engine/                    clean(화면 밖 관절·튀는 공 버림, 빈칸, One Euro, 좌우 뒤바뀜), measure(키 기준: 몸통→정강이→공, force_scale), events, calib, free(자유 분석 입구·자세 믿음 검사), coach(코칭 문장집), score, index(옛 드리블 점수), challenge(도전 모드)
   motions/                   juggle, mastery(토 탭·당기고 밀기), dribble, kick(패스·슈팅)
   sim.js, demo.js            합성 동작(시험·도전 시범 공용), 시범 애니메이션(도전 모드 화면은 0.4.0 에서 아직 안 옮김)
 public/                      그대로 배포: manifest, sw.js(공유 받기·저장본, store.js 와 같은 IndexedDB 구조), icons/, criteria/*.json(기준표·엔진 숫자), bench/(속도 시험)
 tools/extract_raw.py         샘플 원재료 뽑기(파이썬 MediaPipe 0.10.30 + opencv, 앱 scan.js 와 같은 규칙)
-test/                        npm test(Node): engine·challenge·free 시험 28개. synth.mjs = 합성 드리블
+test/                        npm test(Node): engine·challenge·free 시험 29개. synth.mjs = 합성 드리블
 docs/                        설계(lesson-*), 도전 모드(challenge.md), 자유 분석(free-analysis.md)
 ```
 - 로컬 미리보기: `npm run dev`(개발) / `npm run build && npx vite preview`. 편집 도구는 IntelliJ Ultimate·WebStorm·VS Code.
@@ -70,4 +70,6 @@ docs/                        설계(lesson-*), 도전 모드(challenge.md), 자�
 - [x] (0.5.0, 2026-11-27, **첫 공개(베타)**) 슬로모션 자동 보정(떨어지는 공 가속도 → 배율 k, engine/timescale.js), 수직 띄우기는 차기 아님, 토 탭 장면 사이 보간·"한 발 늦음" 기준 강화, 전후 비교(지난번 대비 핵심 숫자·사라진 고칠 점, lib/compare.ts), 성장 리포트(이번 주·연속 일수·30일 변화), 개인정보처리방침·이용약관(public/privacy.html, terms.html). 시험 26개
 - [x] (0.6.0, 2026-11-27, 공개) **동작을 맞히지 않는 전체 코칭**(사용자: "무슨 영상인지는 중요하지 않다, 영상 보고 코칭만"): engine/general.js — 양발 쓰임·박자·뒤로 갈수록 느려짐·자세 높이(무릎 앞·뒤 절반)·상체 좌우 치우침(정면·뒤 영상만, 45° 넘는 장면 제외)·공 간수(발별)·고개(몸 잘림이면 안 봄). 근거는 같은 영상 안 비교와 지난 기록만. 고칠 점마다 ⚽ 경기에서 왜 중요한지 + 🪜 고치는 순서, 잘한 점은 경기에서 써먹는 법(사용자: "축구 잘하는 방법을 코칭"), 📅 이번 주 훈련 계획. 동작 이름 카드는 "참고"로 아래. tools/extract_raw.py: 파이썬 MediaPipe 로 앱과 같은 규칙의 원재료 뽑기(브라우저 흉내 모드보다 5배 빠름). 시험 28개
 - [x] (0.6.1, 2026-11-27, 공개) **공만으로 코칭**(engine/ballonly.js, 사용자: 다리 사이 공 터치는 다리·공만 찍는다): 몸이 안 보이면 공 좌우 이동이 꺾이는 순간 = 터치, 박자·뒤로 갈수록 느려짐·왼쪽/오른쪽으로 보낼 때 박자·세기 차이·공이 자리를 벗어남. 크기는 공 지름 22cm. 꺾이는 순간은 앞뒤 두 장면 직선이 만나는 시각(장면 사이). 샘플 7187047(다리만)에서 코칭 나옴. 시험 29개
+- [x] (0.7.0, 2026-11-27, 공개) 분석할 구간 고르기(미리보기 + 시작·끝 막대, 사용자: 자동 나누기 말고 직접 고르기), 여러 사람이면 누른 사람 따라가기(관절 선 빼앗김 고침), 아래 메뉴(분석·일지·성장·설정)·결과 위쪽 탭(사용자: 스크롤보다 메뉴), 성장 탭 기록 추이, 기록 내보내기·가져오기(다른 폰에서 보기, 사용자 요청), 구글 드라이브 동기화 코드(lib/drive.ts, GIS 토큰·drive.file·`골고폼/rec_….json.gz`·늦게 고친 쪽 남김·지운 기록 kv deleted. `config.ts` GOOGLE_CLIENT_ID 가 비어 있어 "준비 중"으로 보임). tools/extract_raw.py 는 아직 한 사람 기준
+- 다른 폰에서 기록 보기(2026-11-27 사용자 결정): **드라이브 동기화 + 파일 옮기기 둘 다, 그리고 앱으로 씌움**. 앱은 **TWA**(크롬으로 띄움, 구글 로그인 됨. 골고 앱의 WebView 는 구글 로그인이 막혀 안 씀). 주소 띠를 없애려면 `https://ahyeonfc.github.io/.well-known/assetlinks.json` 필요 → 사용자가 `ahyeonfc.github.io` 저장소를 만들어 주면 넣음(나중에 상용화 때 자체 도메인 권장). 드라이브는 골고 폼 전용 Google Cloud 프로젝트의 웹 OAuth 클라이언트 ID(승인된 출처 https://ahyeonfc.github.io) 를 사용자가 만들어 주면 켬. 서버 계정(Firebase 등)은 코치 공유 같은 유료 기능 때
 - [ ] 드리블 끝까지 → 구글 등록·드라이브 백업 → 정답 도구로 시험 → 나머지 동작
