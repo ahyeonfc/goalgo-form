@@ -62,7 +62,7 @@ export function Home({ ctx }: { ctx: Ctx }) {
         {list.slice(0, 3).map(r => <RecItem key={r.id} r={r} open={open} />)}
         {list.length > 3 && <button className="sec" onClick={() => ctx.go({ name: 'journal' }, false)}>일지 전체 보기 ({list.length}개)</button>}
       </>}
-      <p className="ver">영상과 분석 결과는 이 폰 밖으로 나가지 않아요 · <a href="privacy.html">개인정보처리방침</a> · <a href="terms.html">이용약관</a></p>
+      <p className="ver">영상은 이 폰 밖으로 나가지 않아요 · <a href="privacy.html">개인정보처리방침</a> · <a href="terms.html">이용약관</a></p>
     </>
   );
 }

@@ -85,7 +85,7 @@ export function SettingsView({ ctx }: { ctx: Ctx }) {
       </div>
       <div className="card"><h2>약관·방침</h2>
         <p className="sub"><a href="privacy.html" style={{ color: 'var(--acc)' }}>개인정보처리방침</a> · <a href="terms.html" style={{ color: 'var(--acc)' }}>이용약관</a></p>
-        <p className="sub">영상과 분석 결과는 이 폰 밖으로 나가지 않아요(직접 내보낼 때만 나가요).</p></div>
+        <p className="sub">영상은 이 폰 밖으로 나가지 않아요. 분석 기록은 직접 내보내거나 드라이브 동기화를 켤 때만 내 드라이브로 가요.</p></div>
       <p className="ver">골고 폼 {APP_VER} (베타)</p>
     </>
   );

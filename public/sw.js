@@ -1,6 +1,6 @@
 // 골고 폼 서비스 워커. ① 갤러리 "공유"로 받은 영상을 폰 저장소(IndexedDB inbox)에 넣기 ② 오프라인에서도 열리게 저장
 // 빌드된 파일(assets/*)은 이름에 내용 해시가 붙어 있어 한 번 받으면 그대로 써도 된다(옛 파일 섞임이 생기지 않음).
-const SHELL = 'gf-shell-v6', LIB = 'gf-lib-v1', ASSETS = 'gf-assets-v1';
+const SHELL = 'gf-shell-v7', LIB = 'gf-lib-v1', ASSETS = 'gf-assets-v1';
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => c.addAll(['./', './index.html', './manifest.webmanifest', './icons/icon-192.png'].map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
