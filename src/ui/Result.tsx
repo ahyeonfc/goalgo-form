@@ -7,6 +7,7 @@ import { recompute } from '../lib/pipeline';
 import { fmtT, hhmm, josa } from '../lib/fmt';
 import type { Rec, Seg, Shot } from '../lib/types';
 import { Replay, type ReplayHandle } from './Replay';
+import { compareSeg, type Compare } from '../lib/compare';
 import type { Ctx } from './App';
 
 const MK = MOTION_KO as Record<string, string>;
@@ -22,6 +23,8 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
   const [memo, setMemo] = useState(rec0.memo || '');
   const replay = useRef<ReplayHandle>(null);
   const urls = useBlobUrls(rec.shots);
+  const [history, setHistory] = useState<Rec[]>([]);
+  useEffect(() => { S.resList().then(setHistory); }, []);
   const r = rec.result, segs: Seg[] = r.segs || [];
 
   if (!r.free) return <LegacyResult ctx={ctx} rec={rec} onRecalc={setRec} />;
@@ -49,12 +52,13 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
           <div className="hd"><span className="ic">{MOTION_IC[sg.motion]}</span><div><b>{MK[sg.motion]}</b><span>{fmtT(sg.t0)} ~ {fmtT(sg.t1)} · {VIEW_KO[sg.view || 'unknown']}에서</span></div></div>
           <div className="bd">
             <div className="facts">{sg.coach.facts.map(f => <span key={f.k}>{f.k}<b>{f.v}</b></span>)}</div>
+            <CompareBox c={compareSeg(sg, rec, history)} />
             {sg.coach.good.map(g => <div className="pt good" key={g.title}><span className="e">👍</span><div><b>{g.title}</b><p>{g.text}</p></div></div>)}
             {sg.coach.fixes.map(f => { const si = shotIdx(k, f.title); return (
               <div className="pt fix" key={f.title}><span className="e">🔧</span><div><b>{f.title}</b><p>{f.text}</p><small>근거: {f.why}</small>
                 {si >= 0 && <img className="shot" src={urls[si]} alt="" />}
                 {f.t != null && <button className="jump" onClick={() => jump(f.t!)}>▶ 이 장면 보기 ({fmtT(f.t)})</button>}</div></div>); })}
-            {!sg.coach.fixes.length && <div className="nofix">이 영상에서는 근거 있게 짚을 고칠 점이 없어요. 기록이 쌓이면 지난번과 비교해 드릴게요.</div>}
+            {!sg.coach.fixes.length && <div className="nofix">이 영상에서는 근거 있게 짚을 고칠 점이 없어요 👏 {compareSeg(sg, rec, history) ? '지난번과 비교한 숫자로 성장을 확인해 보세요.' : '같은 동작을 다시 찍으면 지난번과 비교해 드릴게요.'}</div>}
             {sg.coach.drill && <div className="pt drill"><span className="e">🏋️</span><div><b>오늘의 연습 · {sg.coach.drill.name}</b><p>{sg.coach.drill.text}</p></div></div>}
             {sg.coach.tip && <div className="pt tip"><span className="e">📱</span><div><b>다음엔 이렇게 찍어 보세요</b><p>{sg.coach.tip}</p></div></div>}
           </div>
@@ -101,4 +105,23 @@ function Info({ ctx, rec, onRecalc }: { ctx: Ctx; rec: Rec; onRecalc: (r: Rec) =
 // 0.3.0 이전(드리블 점수) 기록: 다시 계산하면 새 코칭으로 바뀐다
 function LegacyResult({ ctx, rec, onRecalc }: { ctx: Ctx; rec: Rec; onRecalc: (r: Rec) => void }) {
   return (<><div className="sum"><div className="meta">{rec.lesson} {hhmm(rec.takenAt)}</div><h2>예전 방식으로 분석한 기록이에요</h2><p className="sub">"최신 기준으로 다시 계산"을 누르면 새 코칭으로 바뀌어요.</p></div><Info ctx={ctx} rec={rec} onRecalc={onRecalc} /></>);
+}
+
+// 지난번과 비교: 핵심 숫자 변화 + 사라진 고칠 점(축하)
+function CompareBox({ c }: { c: Compare | null }) {
+  if (!c || (!c.deltas.length && !c.goneFixes.length)) return null;
+  const f = (v: number, dp: number) => (+v).toFixed(dp);
+  return (
+    <div className="cmp">
+      <b>📈 지난번({c.prev.lesson} {hhmm(c.prev.takenAt)})과 비교</b>
+      {c.deltas.map(d => (
+        <div key={d.m.k} className="cmp-row">
+          <span>{d.m.name}</span>
+          <span className="v">{f(d.before, d.m.dp)} → <b>{f(d.after, d.m.dp)}</b>{d.m.unit}</span>
+          <span className={d.better == null ? 'dim' : d.better ? 'ok' : 'warn'}>{d.better == null ? '그대로' : `${d.diff > 0 ? '▲' : '▼'} ${d.pct != null ? Math.abs(Math.round(d.pct)) + '%' : f(Math.abs(d.diff), d.m.dp)}`}</span>
+        </div>
+      ))}
+      {c.goneFixes.map(t => <div key={t} className="cmp-gone">🎉 지난번 고칠 점 "{t}"이(가) 이번엔 안 보여요</div>)}
+    </div>
+  );
 }

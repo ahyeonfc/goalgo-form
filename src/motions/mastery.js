@@ -15,7 +15,13 @@ export function tapTouches(m, cfg) {
       if (!isNum(h[i]) || h[i] < cfg.tap_h_min) continue;
       if (m.ts[i] - last < cfg.tap_gap) continue;
       last = m.ts[i];
-      out.push({ t: m.ts[i], i, foot: side, kind: 'tap' });
+      // 장면 사이 시각: 앞뒤 세 장면 거리로 포물선을 맞춰 가장 가까운 순간을 장면 사이까지 계산(30fps 반올림 오차 줄이기)
+      let t = m.ts[i];
+      if (i > 0 && i + 1 < d.length && isNum(d[i - 1]) && isNum(d[i + 1])) {
+        const den = d[i - 1] - 2 * d[i] + d[i + 1];
+        if (den > 1e-9) { const off = (d[i - 1] - d[i + 1]) / (2 * den); if (Math.abs(off) <= 1) t = m.ts[i] + off * (m.ts[i + 1] - m.ts[i - 1]) / 2; }
+      }
+      out.push({ t, i, foot: side, kind: 'tap' });
     }
   }
   return out.sort((a, b) => a.t - b.t);

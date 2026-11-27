@@ -83,8 +83,8 @@ function coachTap(s, { m, history, fps }) {
   if (isNum(p.tempo_cv) && p.tempo_cv <= 15) good.push({ title: '박자가 일정해요', text: `간격 흔들림이 ${pct(p.tempo_cv)}로 작아요.` });
   if (isNum(p.alt) && p.alt < 80) fixes.push({ sev: (80 - p.alt) / 10, title: '한 발이 연달아 나와요', text: `번갈아 ${pct(p.alt)}예요. 오른발·왼발을 소리 내어 "하나, 둘" 세며 번갈아 해 보세요.`, why: '같은 영상 안 비교' });
   const g = gapByFoot(mk), r = asym(g.l, g.r);
-  // 장면 간격(30fps 0.033초)의 두 배보다 작은 차이는 재는 오차라 지적하지 않는다
-  if (r && r >= 1.15 && Math.abs(g.l - g.r) >= Math.max(0.07, 2.5 / (ctxFps || 30)) && g.nl >= 4 && g.nr >= 4) {
+  // 장면 간격(30fps 0.033초)의 세 배보다 작은 차이는 재는 오차라 지적하지 않는다
+  if (r && r >= 1.2 && Math.abs(g.l - g.r) >= Math.max(0.08, 3 / (ctxFps || 30)) && g.nl >= 4 && g.nr >= 4) {
     const sl = slower(g);
     fixes.push({ sev: (r - 1) * 10, title: `${FOOT[sl]}이 늦어요`, text: `${FOOT[sl]} 다음 박자가 ${FOOT[sl === 'l' ? 'r' : 'l']}보다 ${f2(Math.abs(g.l - g.r))}초 길어요(${Math.round((r - 1) * 100)}% 느림). ${FOOT[sl]}만 10번 먼저 연습한 뒤 다시 번갈아 해 보세요.`, why: '같은 영상 안 비교', t: mk.find(x => x.foot === sl)?.t });
   }

@@ -6,6 +6,7 @@ import { MOTION_IC } from '../config';
 import { hhmm } from '../lib/fmt';
 import type { Rec } from '../lib/types';
 import type { Ctx } from './App';
+import { growth } from '../lib/compare';
 
 const MK = MOTION_KO as Record<string, string>;
 let installEvt: any = null;
@@ -56,6 +57,7 @@ export function Home({ ctx }: { ctx: Ctx }) {
         {canInstall && <button className="sec" onClick={async () => { installEvt?.prompt(); await installEvt?.userChoice; installEvt = null; setCanInstall(false); }}>지금 설치</button>}
       </div>}
 
+      {list && list.length > 0 && <GrowthCard list={list} />}
       <h3 className="h3">📒 코칭 일지</h3>
       {list === null ? <p className="empty">불러오는 중…</p> : !list.length ? <p className="empty">아직 기록이 없어요.<br />훈련 영상을 하나 골라 보세요.</p> :
         list.map(r => {
@@ -70,5 +72,29 @@ export function Home({ ctx }: { ctx: Ctx }) {
             <span className="go">›</span></button>];
         })}
     </>
+  );
+}
+
+// 이번 주 성장: 훈련 횟수·연속 일수, 최근 30일 동작별 처음 → 지금
+function GrowthCard({ list }: { list: Rec[] }) {
+  const g = growth(list);
+  if (!g.weekSessions && !g.motions.length) return null;
+  return (
+    <div className="card growth">
+      <h2>🌱 나의 성장 <small>최근 30일</small></h2>
+      <div className="gstats">
+        <div><b>{g.weekSessions}</b><span>이번 주 영상</span></div>
+        <div><b>{g.weekDays}</b><span>이번 주 훈련한 날</span></div>
+        <div><b>{g.streak}</b><span>연속 훈련 일수</span></div>
+      </div>
+      {g.motions.map(x => (
+        <div key={x.motion} className="cmp-row">
+          <span>{MOTION_IC[x.motion]} {MK[x.motion]} · {x.m.name}</span>
+          <span className="v">{x.first.toFixed(x.m.dp)} → <b>{x.last.toFixed(x.m.dp)}</b>{x.m.unit}</span>
+          <span className={x.better ? 'ok' : 'warn'}>{x.better ? '좋아짐' : '아쉬움'}</span>
+        </div>
+      ))}
+      {!g.motions.length && <p className="sub">같은 동작을 두 번 이상 찍으면 얼마나 좋아졌는지 보여 드려요.</p>}
+    </div>
   );
 }
