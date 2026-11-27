@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.goalgo.form",
+    "sha256_cert_fingerprints": ["87:B0:3C:57:A7:8E:38:63:1D:7A:28:28:B7:FC:39:E2:90:B9:D5:AC:39:A2:39:DF:35:F0:80:21:25:6F:84:E3"]
+  }
+}]
