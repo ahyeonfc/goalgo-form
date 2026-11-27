@@ -72,7 +72,7 @@ export async function runAnalysis(opt: {
     let result = engine(raw);
     // 2차: 슬로모션이면 찾은 사건 앞뒤만 모든 장면
     if (dense && !job.stop) {
-      const evT = result.segs.flatMap(x => x.marks.map(e => e.t));
+      const evT = [...result.segs.flatMap(x => x.marks.map(e => e.t)), ...(result.general?.marks || []).map(e => e.t)];
       const more = denseTimes(evT, srcFps, dur, raw.map(f => f.t));
       if (more.length) {
         scanner.stop = false;
@@ -98,6 +98,8 @@ export async function runAnalysis(opt: {
 // 장면 사진: 고칠 점이 가리키는 순간 + 구간 가운데 터치. 영상이 없어도 장면을 볼 수 있게 JPEG 로 남긴다
 async function makeShots(v: HTMLVideoElement, scanW: number, raw: RawFrame[], result: FreeResult): Promise<Shot[]> {
   const want: { t: number; cap: string; seg: number; fix?: string }[] = [];
+  // 전체 코칭의 고칠 점 장면(seg = -1)
+  for (const f of result.general?.fixes || []) if (f.t != null) want.push({ t: f.t, cap: f.title, seg: -1, fix: f.title });
   result.segs.forEach((s, k) => {
     for (const f of s.coach.fixes) if (f.t != null) want.push({ t: f.t, cap: `${MOTION_KO[s.motion]} · ${f.title}`, seg: k, fix: f.title });
     const mk = s.marks; if (mk.length) { const m = mk[Math.floor(mk.length / 2)]; want.push({ t: m.t, cap: `${MOTION_KO[s.motion]} ${fmtT(m.t)}`, seg: k }); }

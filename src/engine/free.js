@@ -12,6 +12,7 @@ import { jugglePrims } from '../motions/juggle.js';
 import { findKicks } from '../motions/kick.js';
 import { coachSeg, MOTION_KO } from './coach.js';
 import { estimateTimeScale } from './timescale.js';
+import { generalCoach } from './general.js';
 
 export const FREE_VER = 'f1-2026-11-27';
 
@@ -93,11 +94,13 @@ export function analyzeFree(raw, opts) {
     s.view = viewOf(m, c.joints, a, b, cfg).view;
     s.coach = coachSeg(s, { m, c, ev, cfg, heightCm, fps, view: s.view, history, profile });
   }
-  if (poseOk && !segs.length) {
+  // 동작과 상관없는 전체 코칭(몸이 보이면 항상)
+  const general = poseOk ? generalCoach(c, m, ev, cfg, { fps, history, view: view.view }) : null;
+  if (poseOk && !segs.length && !(general && general.span)) {
     const ballSeen = c.ball.filter(Boolean).length / Math.max(1, n), poseSeen = m.bodyC.filter(Boolean).length / Math.max(1, n);
     if (ballSeen < 0.5) notes.push({ kind: 'warn', text: '공이 잘 안 보였어요. 공이 화면에서 너무 작지 않게(3~5m) 찍어 주세요.' });
     else if (poseSeen < 0.6) notes.push({ kind: 'warn', text: '몸이 잘 안 보였어요. 머리부터 발끝까지 화면에 들어오게 찍어 주세요.' });
-    else notes.push({ kind: 'info', text: '공 터치나 차기를 찾지 못했어요. 지금은 리프팅·공 다루기(토 탭, 당기고 밀기)·드리블·패스·슈팅을 알아봐요.' });
+    else notes.push({ kind: 'info', text: '움직임이 거의 없어 코칭할 장면을 찾지 못했어요.' });
   }
   if (fps < 50 && segs.some(s => s.motion === 'shot' || s.motion === 'pass')) notes.push({ kind: 'info', text: '슬로모션(120fps)으로 찍으면 공 속도와 차는 순간을 더 정확히 봐 드릴 수 있어요.' });
 
@@ -105,7 +108,7 @@ export function analyzeFree(raw, opts) {
     free: FREE_VER, timeScale: _scaled ? null : { k: 1, est: ts0 }, fps, heightCm, dur: n ? +(m.ts[n - 1] - m.ts[0]).toFixed(2) : 0, frames: n,
     poseSeen: +(m.bodyC.filter(Boolean).length / Math.max(1, n)).toFixed(2), ballSeen: +(c.ball.filter(Boolean).length / Math.max(1, n)).toFixed(2),
     poseOk, ballRatio: isNum(ballRatio) ? +ballRatio.toFixed(3) : null, view, calib, notes,
-    segs, events: { touches: ev.touches.map(t => ({ t: +t.t.toFixed(3), foot: t.foot })), steps: ev.steps.length, cuts: ev.cuts.length },
+    general, segs, events: { touches: ev.touches.map(t => ({ t: +t.t.toFixed(3), foot: t.foot })), steps: ev.steps.length, cuts: ev.cuts.length },
   };
 }
 
@@ -119,6 +122,7 @@ function toVideoTime(r, k, est) {
     for (const f of s.coach.fixes) if (isNum(f.t)) f.t = T(f.t);
   }
   r.events.touches = r.events.touches.map(x => ({ ...x, t: T(x.t) }));
+  if (r.general && r.general.span) { r.general.span = r.general.span.map(T); r.general.marks = r.general.marks.map(x => ({ ...x, t: T(x.t) })); for (const f of r.general.fixes) if (isNum(f.t)) f.t = T(f.t); }
   r.dur = T(r.dur);
   r.timeScale = { k: +k.toFixed(2), est };
   r.notes.unshift({ kind: 'info', text: `슬로모션 영상으로 보여요(실제보다 약 ${k.toFixed(1)}배 느림). 떨어지는 공의 속도로 시간을 맞춰 분석했어요.` });

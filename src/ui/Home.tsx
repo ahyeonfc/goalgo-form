@@ -30,9 +30,9 @@ export function Home({ ctx }: { ctx: Ctx }) {
       <div className="hero">
         <div className="kicker">AI 개인 코칭</div>
         <h2>오늘 훈련, 영상만 넘기면<br />코칭해 드려요</h2>
-        <p>무슨 동작인지 알아서 알아채고, 잘한 점과 고칠 점, 오늘의 연습을 알려 줘요.</p>
+        <p>토 탭이든 리프팅이든 드리블이든, 어떤 훈련 영상이든 넣으면 잘한 점과 고칠 점, 오늘의 연습을 알려 줘요.</p>
         <label className="cta"><input type="file" accept="video/*" onChange={pick} />🎥 훈련 영상 고르기</label>
-        <div className="chips">{Object.entries(MOTION_IC).map(([k, ic]) => <span key={k} className="chip">{ic} {MK[k]}</span>)}</div>
+        <div className="chips"><span className="chip">🦶 양발 쓰임</span><span className="chip">🥁 박자</span><span className="chip">🧍 자세 높이</span><span className="chip">⚖️ 좌우 균형</span><span className="chip">⚽ 공 간수</span><span className="chip">📈 지난번과 비교</span></div>
       </div>
 
       {inbox.length > 0 && <>
@@ -65,10 +65,10 @@ export function Home({ ctx }: { ctx: Ctx }) {
           const segs = r.result.segs || [];
           if (!r.result.free) return [head, <button key={r.id} className="item" onClick={() => open(r.id)}><span className="ic">🎬</span><span className="k"><b>{r.name}</b><span>{hhmm(r.takenAt)} · 예전 분석(다시 계산하면 코칭이 생겨요)</span></span><span className="go">›</span></button>];
           const ms = [...new Set(segs.map(x => x.motion))];
-          const fix = segs.flatMap(x => x.coach?.fixes || [])[0];
+          const fix = (r.result.general?.fixes || [])[0] || segs.flatMap(x => x.coach?.fixes || [])[0];
           return [head, <button key={r.id} className="item" onClick={() => open(r.id)}>
-            <span className="ic">{ms.length ? MOTION_IC[ms[0]] : '🎬'}</span>
-            <span className="k"><b>{ms.length ? ms.map(x => MK[x]).join(' · ') : '동작을 찾지 못함'}</b><span>{hhmm(r.takenAt)} · {fix ? '🔧 ' + fix.title : r.name}{r.memo ? ' · 📝' : ''}</span></span>
+            <span className="ic">{ms.length ? MOTION_IC[ms[0]] : '🧑‍🏫'}</span>
+            <span className="k"><b>{ms.length ? ms.map(x => MK[x]).join(' · ') : r.result.general?.span ? '훈련 영상' : '코칭할 장면 없음'}</b><span>{hhmm(r.takenAt)} · {fix ? '🔧 ' + fix.title : r.name}{r.memo ? ' · 📝' : ''}</span></span>
             <span className="go">›</span></button>];
         })}
       <p className="ver">영상과 분석 결과는 이 폰 밖으로 나가지 않아요 · <a href="privacy.html">개인정보처리방침</a> · <a href="terms.html">이용약관</a></p>

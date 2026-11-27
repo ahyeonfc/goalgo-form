@@ -105,7 +105,7 @@
     "_note": "공 다루기·리프팅 엔진 숫자(첫 판). 길이 = 키 비율, 시간 = 초.",
     "tap_dist": 0.12, "tap_h_min": 0.05, "tap_gap": 0.2,
     "pp_gap": 0.8, "mst_gap": 1.2,
-    "free_still_v": 0.6, "ts_free_dist": 0.12, "ts_min_pts": 6, "ts_min_r2": 0.9, "ts_slow": 1.6, "ts_min_flights": 2, "free_mst_min": 8,
+    "free_still_v": 0.6, "gen_move_v": 0.5, "ts_free_dist": 0.12, "ts_min_pts": 6, "ts_min_r2": 0.9, "ts_slow": 1.6, "ts_min_flights": 2, "free_mst_min": 8,
     "jg_win": 0.12, "jg_rise": 0.35, "jg_ground": 0.09, "jg_bounce": 0.06, "jg_kick": 0.03, "jg_part_dist": 0.3, "jg_min_gap": 0.2, "jg_gap": 1.5
   }
 }

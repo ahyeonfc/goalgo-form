@@ -62,3 +62,17 @@ test('보통 속도 리프팅은 슬로모션으로 보지 않음', () => {
   const r = run(synthJuggle({ n1: 12, n2: 6 }));
   assert.ok(!r.notes.some(n => /슬로모션 영상으로/.test(n.text)), JSON.stringify(r.timeScale));
 });
+
+test('동작과 상관없는 전체 코칭: 한 발만 쓰는 영상은 "만 주로 써요", 양발 영상은 칭찬', () => {
+  const one = run(synthTap({ n: 24, alt: false, gap: 0.4 }));
+  assert.ok(one.general && one.general.fixes.some(f => /만 주로 써요/.test(f.title)), JSON.stringify(one.general?.fixes));
+  const both = run(synthTap({ n: 26, gap: 0.3 }));
+  assert.ok(both.general.good.some(g => /양발/.test(g.title)), JSON.stringify(both.general.good));
+  assert.ok(!both.general.fixes.some(f => /만 주로/.test(f.title)));
+  assert.ok(both.general.drill);
+});
+test('몸이 안 보이면 전체 코칭 없이 찍는 법 안내', () => {
+  const s = synthTap({ n: 24 }); for (const f of s.raw) f.ball.r *= 3.5;
+  const r = run(s);
+  assert.equal(r.general, null);
+});

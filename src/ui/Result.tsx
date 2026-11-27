@@ -30,7 +30,8 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
   if (!r.free) return <LegacyResult ctx={ctx} rec={rec} onRecalc={setRec} />;
 
   const motions = [...new Set(segs.map(x => x.motion))];
-  const nFix = segs.reduce((a, x) => a + x.coach.fixes.length, 0), nGood = segs.reduce((a, x) => a + x.coach.good.length, 0);
+  const g = r.general && r.general.span ? r.general : null;
+  const nFix = (g?.fixes.length || 0) + segs.reduce((a, x) => a + x.coach.fixes.length, 0), nGood = (g?.good.length || 0) + segs.reduce((a, x) => a + x.coach.good.length, 0);
   const shotIdx = (k: number, title: string) => (rec.shots || []).findIndex(x => x.seg === k && x.fix === title);
   const jump = (t: number) => { document.getElementById('replay')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); replay.current?.seek(t - 0.6, true); };
   const others = (rec.shots || []).map((s, i) => ({ s, u: urls[i] })).filter(x => !x.s.fix);
@@ -39,7 +40,7 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
     <>
       <div className="sum">
         <div className="meta">{rec.lesson} {hhmm(rec.takenAt)} · {fmtT(r.dur)} · {Math.round(r.scan?.srcFps || r.fps)}fps · {VIEW_KO[r.view.view]}에서 찍음</div>
-        <h2>{segs.length ? `${josa(motions.map(x => MOTION_IC[x] + ' ' + MK[x]).join(', '), '을', '를')} 알아챘어요` : '코칭할 동작을 찾지 못했어요'}</h2>
+        <h2>{g ? '영상을 보고 코칭했어요' : segs.length ? `${josa(motions.map(x => MOTION_IC[x] + ' ' + MK[x]).join(', '), '을', '를')} 알아챘어요` : '코칭할 장면을 찾지 못했어요'}</h2>
         <div className="chips">
           {segs.length > 0 && <><span className="chip on">👍 잘한 점 {nGood}</span><span className="chip">🔧 고칠 점 {nFix}</span></>}
           <span className="chip">🧍 몸 {Math.round(r.poseSeen * 100)}%</span><span className="chip">⚽ 공 {Math.round(r.ballSeen * 100)}%</span>
@@ -47,6 +48,30 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
       </div>
       {(r.notes || []).map((n, i) => <div key={i} className={'note' + (n.kind === 'warn' ? ' warn' : '')}>{n.text}</div>)}
 
+      {g && (
+        <div className="card coach">
+          <div className="hd"><span className="ic">🧑‍🏫</span><div><b>코칭</b><span>{fmtT(g.span![0])} ~ {fmtT(g.span![1])} · 영상 전체를 보고</span></div></div>
+          <div className="bd">
+            <div className="facts">{g.facts.map(f => <span key={f.k}>{f.k}<b>{f.v}</b></span>)}</div>
+            {g.good.map(x => <div className="pt good" key={x.title}><span className="e">👍</span><div><b>{x.title}</b><p>{x.text}</p>{x.game && <p className="game">⚽ {x.game}</p>}</div></div>)}
+            {g.fixes.map(f => { const si = shotIdx(-1, f.title); return (
+              <div className="pt fix" key={f.title}><span className="e">🔧</span><div><b>{f.title}</b><p>{f.text}</p>
+                {f.game && <p className="game">⚽ 경기에서는: {f.game}</p>}
+                {f.how && <ol className="how">{f.how.map(h => <li key={h}>{h}</li>)}</ol>}
+                <small>근거: {f.why}</small>
+                {si >= 0 && <img className="shot" src={urls[si]} alt="" />}
+                {f.t != null && <button className="jump" onClick={() => jump(f.t!)}>▶ 이 장면 보기 ({fmtT(f.t)})</button>}</div></div>); })}
+            {!g.fixes.length && <div className="nofix">이 영상에서는 근거 있게 짚을 고칠 점이 없어요 👏 같은 자리·같은 각도로 다시 찍으면 지난번과 비교해 드릴게요.</div>}
+            {g.drill && <div className="pt drill"><span className="e">🏋️</span><div><b>오늘의 연습 · {g.drill.name}</b><p>{g.drill.text}</p></div></div>}
+          </div>
+        </div>
+      )}
+      {g?.plan && g.plan.length > 0 && (
+        <div className="card plan"><h2>📅 이번 주 훈련 계획 <small>하루 15~20분</small></h2>
+          {g.plan.map(d => <div className="pday" key={d.day}><span>{d.day}</span><div><b>{d.title}</b><p>{d.text}</p></div></div>)}
+        </div>
+      )}
+      {g && segs.length > 0 && <h3 className="h3">동작별 자세히 (참고)</h3>}
       {segs.map((sg, k) => (
         <div className="card coach" key={k}>
           <div className="hd"><span className="ic">{MOTION_IC[sg.motion]}</span><div><b>{MK[sg.motion]}</b><span>{fmtT(sg.t0)} ~ {fmtT(sg.t1)} · {VIEW_KO[sg.view || 'unknown']}에서</span></div></div>

@@ -179,3 +179,14 @@ li{margin:3px 0}
 .gstats span{font-size:11px;color:var(--sub)}
 
 .ver a{color:var(--sub)}
+
+/* 축구 코칭: 경기에서 왜, 고치는 순서, 이번 주 계획 */
+.pt p.game{margin-top:6px;font-size:13px;color:#bfe9d4}
+.pt.fix p.game{color:#ffe2b3}
+.how{margin:6px 0 4px;padding-left:18px;font-size:13px;color:#cdd3dd}
+.how li{margin:2px 0}
+.plan .pday{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.plan .pday:first-of-type{border-top:0}
+.plan .pday>span{flex:none;width:52px;font-size:12px;font-weight:700;color:var(--acc2);padding-top:2px}
+.plan .pday b{display:block;font-size:14px}
+.plan .pday p{margin:2px 0 0;font-size:13px;color:var(--sub)}
