@@ -40,6 +40,7 @@ src/
   main.tsx, config.ts        시작, 버전·기능 스위치(SHOW_CHALLENGE)·기본 설정·동작 아이콘
   lib/compare.ts             전후 비교·성장 리포트
   engine/timescale.js        슬로모션 배율(떨어지는 공 가속도)
+  engine/general.js          동작과 상관없는 전체 코칭(결과 맨 위)
   ui/                        React 화면: App(화면 전환·뒤로 가기), Setup, Home, Run, Result, Replay(관절 선 다시 보기), SettingsView, app.css
   lib/                       pipeline.ts(영상 → 원재료 → 엔진 → 장면 사진 → 저장, 다시 계산), draw.ts(관절 선), fmt.ts, types.ts(결과 형식)
   scan.js                    MediaPipe 자세 + 공(EfficientDet-Lite2 전체 + 사람 주변 확대, 몸 가깝고 이어지는 공, 가만히 있는 공 거르기)
@@ -48,7 +49,8 @@ src/
   motions/                   juggle, mastery(토 탭·당기고 밀기), dribble, kick(패스·슈팅)
   sim.js, demo.js            합성 동작(시험·도전 시범 공용), 시범 애니메이션(도전 모드 화면은 0.4.0 에서 아직 안 옮김)
 public/                      그대로 배포: manifest, sw.js(공유 받기·저장본, store.js 와 같은 IndexedDB 구조), icons/, criteria/*.json(기준표·엔진 숫자), bench/(속도 시험)
-test/                        npm test(Node): engine·challenge·free 시험 24개. synth.mjs = 합성 드리블
+tools/extract_raw.py         샘플 원재료 뽑기(파이썬 MediaPipe 0.10.30 + opencv, 앱 scan.js 와 같은 규칙)
+test/                        npm test(Node): engine·challenge·free 시험 28개. synth.mjs = 합성 드리블
 docs/                        설계(lesson-*), 도전 모드(challenge.md), 자유 분석(free-analysis.md)
 ```
 - 로컬 미리보기: `npm run dev`(개발) / `npm run build && npx vite preview`. 편집 도구는 IntelliJ Ultimate·WebStorm·VS Code.
@@ -65,4 +67,5 @@ docs/                        설계(lesson-*), 도전 모드(challenge.md), 자�
 - [x] (0.3.0, 2026-11-27, 폰 시험 전) 자유 분석 코칭: 구간 자동 알아채기(리프팅·패스/슈팅·토 탭·당기고 밀기·드리블), 코칭 카드(잘한 점·고칠 점 2개·오늘의 연습·찍는 팁), 관절 선 다시 보기, 새 화면 디자인, 공 찾기 개선(Lite2 + 사람 주변 확대 + 쓰는 공 고르기), 몸이 잘린 영상 알아채기, 화면 밖 관절 버리기, 올린 직후 옛 파일 섞임 고침. 도전 모드는 처음 화면에서 숨김(SHOW_CHALLENGE). Pexels 샘플 13개로 시험(docs/free-analysis.md)
 - [x] (0.4.0, 2026-11-27, 브랜치만, 공개 전) TypeScript + React + Vite 로 옮김, GitHub Actions(시험·빌드·배포). 공 찾기: 가만히 있는 공 거르기, 튀는 공 버리기, 몸 잘림이면 공 크기로 다시 재기. 리프팅 판정 다듬음(천천히 하는 허벅지 리프팅). 샘플 10349012 정답(직접 장면 보고 6번) 대비 4번 맞힘 — 상용화 전 정확도 더 필요
 - [x] (0.5.0, 2026-11-27, **첫 공개(베타)**) 슬로모션 자동 보정(떨어지는 공 가속도 → 배율 k, engine/timescale.js), 수직 띄우기는 차기 아님, 토 탭 장면 사이 보간·"한 발 늦음" 기준 강화, 전후 비교(지난번 대비 핵심 숫자·사라진 고칠 점, lib/compare.ts), 성장 리포트(이번 주·연속 일수·30일 변화), 개인정보처리방침·이용약관(public/privacy.html, terms.html). 시험 26개
+- [x] (0.6.0, 2026-11-27, 공개) **동작을 맞히지 않는 전체 코칭**(사용자: "무슨 영상인지는 중요하지 않다, 영상 보고 코칭만"): engine/general.js — 양발 쓰임·박자·뒤로 갈수록 느려짐·자세 높이(무릎 앞·뒤 절반)·상체 좌우 치우침(정면·뒤 영상만, 45° 넘는 장면 제외)·공 간수(발별)·고개(몸 잘림이면 안 봄). 근거는 같은 영상 안 비교와 지난 기록만. 고칠 점마다 ⚽ 경기에서 왜 중요한지 + 🪜 고치는 순서, 잘한 점은 경기에서 써먹는 법(사용자: "축구 잘하는 방법을 코칭"), 📅 이번 주 훈련 계획. 동작 이름 카드는 "참고"로 아래. tools/extract_raw.py: 파이썬 MediaPipe 로 앱과 같은 규칙의 원재료 뽑기(브라우저 흉내 모드보다 5배 빠름). 시험 28개
 - [ ] 드리블 끝까지 → 구글 등록·드라이브 백업 → 정답 도구로 시험 → 나머지 동작

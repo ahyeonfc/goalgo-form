@@ -6,6 +6,7 @@
 
 import { isNum, mean, median, percentile, std, idxRange } from './util.js';
 import { tapTouches } from '../motions/mastery.js';
+import { juggleEvents } from '../motions/juggle.js';
 
 const FOOT = { l: '왼발', r: '오른발' };
 const pct = v => `${Math.round(v)}%`;
@@ -20,15 +21,16 @@ function activeSpan(m, cfg) {
   return a < 0 ? null : [a, b + 1];
 }
 
-// 터치 모으기: 공 움직임이 바뀐 터치 + 공 위 터치(토 탭 모양). 0.12초 안 겹치면 하나로
-function allTouches(m, ev, cfg) {
-  const t = [...ev.touches.map(x => ({ t: x.t, foot: x.foot })), ...tapTouches(m, cfg).map(x => ({ t: x.t, foot: x.foot }))].sort((a, b) => a.t - b.t);
+// 터치 모으기: 공 움직임이 바뀐 터치 + 공 위 터치(토 탭 모양) + 공중에서 다시 차올린 닿음(리프팅). 0.12초 안 겹치면 하나로
+function allTouches(c, m, ev, cfg) {
+  const jg = juggleEvents(c, m, cfg).contacts.map(x => ({ t: x.t, foot: x.part === 'foot_l' ? 'l' : x.part === 'foot_r' ? 'r' : null }));
+  const t = [...ev.touches.map(x => ({ t: x.t, foot: x.foot })), ...tapTouches(m, cfg).map(x => ({ t: x.t, foot: x.foot })), ...jg].sort((a, b) => a.t - b.t);
   const out = [];
   for (const x of t) { const p = out[out.length - 1]; if (p && x.t - p.t < 0.12) continue; out.push(x); }
   return out;
 }
 
-export function generalCoach(c, m, ev, cfg, { fps, history = [], view = 'unknown' }) {
+export function generalCoach(c, m, ev, cfg, { fps, history = [], view = 'unknown', bodyCut = false }) {
   const span = activeSpan(m, cfg);
   const good = [], fixes = [], facts = [];
   if (!span) return { span: null, good, fixes, facts, marks: [] };
@@ -43,7 +45,7 @@ export function generalCoach(c, m, ev, cfg, { fps, history = [], view = 'unknown
   if (ml + mr > 0.5) p.foot_move_l = 100 * ml / (ml + mr);
 
   // ── 공 터치
-  const marks = allTouches(m, ev, cfg).filter(x => x.t >= t0 - 0.1 && x.t <= t1 + 0.1);
+  const marks = allTouches(c, m, ev, cfg).filter(x => x.t >= t0 - 0.1 && x.t <= t1 + 0.1);
   p.touches = marks.length;
   const known = marks.filter(x => x.foot);
   if (known.length >= 6) p.touch_l = 100 * known.filter(x => x.foot === 'l').length / known.length;
@@ -64,7 +66,8 @@ export function generalCoach(c, m, ev, cfg, { fps, history = [], view = 'unknown
   const tr = sl(m.trunk_ang).filter(v => isNum(v) && Math.abs(v) <= 45);
   if ((view === 'front' || view === 'back') && tr.length >= 20) { p.lean_r = Math.max(0, percentile(tr, 90)); p.lean_l = Math.max(0, -percentile(tr, 10)); }
   const hd = sl(m.head_drop).filter(isNum);
-  if (hd.length >= 20) { const base = percentile(m.head_drop.filter(isNum), 10); p.head_up = 100 * hd.filter(v => v < base + cfg.head_up_drop).length / hd.length; }
+  // 몸 일부가 화면 밖(공 크기로 다시 잰 영상)이면 머리 위치를 지어냈을 수 있어 고개는 보지 않는다
+  if (hd.length >= 20 && !bodyCut) { const base = percentile(m.head_drop.filter(isNum), 10); p.head_up = 100 * hd.filter(v => v < base + cfg.head_up_drop).length / hd.length; }
 
   // ── 공 거리: 공이 보일 때 가까운 발끝과의 거리(키 비율), 발별(터치한 발 기준 다음 터치까지 가장 먼 거리)
   const bd = sl(m.foot_ball_d).filter(isNum);

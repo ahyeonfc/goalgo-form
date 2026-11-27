@@ -95,7 +95,7 @@ export function analyzeFree(raw, opts) {
     s.coach = coachSeg(s, { m, c, ev, cfg, heightCm, fps, view: s.view, history, profile });
   }
   // 동작과 상관없는 전체 코칭(몸이 보이면 항상)
-  const general = poseOk ? generalCoach(c, m, ev, cfg, { fps, history, view: view.view }) : null;
+  const general = poseOk ? generalCoach(c, m, ev, cfg, { fps, history, view: view.view, bodyCut: rescaled }) : null;
   if (poseOk && !segs.length && !(general && general.span)) {
     const ballSeen = c.ball.filter(Boolean).length / Math.max(1, n), poseSeen = m.bodyC.filter(Boolean).length / Math.max(1, n);
     if (ballSeen < 0.5) notes.push({ kind: 'warn', text: '공이 잘 안 보였어요. 공이 화면에서 너무 작지 않게(3~5m) 찍어 주세요.' });
