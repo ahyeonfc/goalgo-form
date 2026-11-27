@@ -1,10 +1,10 @@
 // 앱 전체 설정·버전·기능 스위치를 한곳에 둔다
-export const APP_VER = '0.8.0';
+export const APP_VER = '0.8.1';
 /** 도전 모드(과제·단계)는 잠시 숨김(2026-11-27 사용자: 자유 분석 먼저). 엔진은 src/engine/challenge.js 에 그대로 있음 */
 export const SHOW_CHALLENGE = false;
 
-export interface Settings { pose: 'lite' | 'full' | 'heavy'; ball: string; delegate: 'GPU' | 'CPU'; width: number; step: number }
-export const DEF_SET: Settings = { pose: 'full', ball: 'efficientdet_lite2', delegate: 'GPU', width: 960, step: 30 };
+export interface Settings { pose: 'lite' | 'full' | 'heavy'; ball: string; delegate: 'GPU' | 'CPU'; width: number; step: number; rfBall?: boolean }
+export const DEF_SET: Settings = { pose: 'full', ball: 'efficientdet_lite2', delegate: 'GPU', width: 960, step: 30, rfBall: true };
 
 export interface Profile { heightCm: number; foot: 'l' | 'r'; createdMs?: number }
 

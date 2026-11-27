@@ -151,6 +151,7 @@ function Info({ ctx, rec, onRecalc }: { ctx: Ctx; rec: Rec; onRecalc: (r: Rec) =
         <tr><td>장면</td><td className="v">{r.frames}장 · {r.scan?.wallSec ?? '—'}초 걸림</td></tr>
         <tr><td>몸·공을 찾은 장면</td><td className="v">{Math.round(r.poseSeen * 100)}% · {Math.round(r.ballSeen * 100)}%</td></tr>
         <tr><td>공 크기 ÷ 키 (정상 약 {(22 / ctx.profile.heightCm).toFixed(2)})</td><td className="v">{r.ballRatio ?? '—'}</td></tr>
+        {r.scan?.rf && <tr><td>보조 공 찾기(RF-DETR)</td><td className="v">{r.scan.rf.runs}장 중 {r.scan.rf.hits}장에서 공 찾음</td></tr>}
         <tr><td>모델</td><td className="v">{r.scan?.set ? `${r.scan.set.pose} · ${r.scan.set.delegate} · ${r.scan.set.width}px` : '—'}</td></tr>
         <tr><td>엔진</td><td className="v">{r.free || r.engine}</td></tr>
       </tbody></table></details>

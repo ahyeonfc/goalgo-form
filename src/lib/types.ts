@@ -10,7 +10,7 @@ export interface Posture { fixes: PostureItem[]; good: PostureItem[]; side: bool
 export interface FreeResult {
   free: string; fps: number; heightCm: number; dur: number; frames: number; poseSeen: number; ballSeen: number;
   poseOk: boolean; ballRatio: number | null; view: { view: string }; notes: Note[]; segs: Seg[]; general?: General | null; timeScale?: { k: number } | null;
-  scan?: { frame?: { w: number; h: number }; srcFps: number; step: number; frames: number; wallSec: number; w: number; h: number; set: { pose: string; delegate: string; width: number }; mp4?: unknown };
+  scan?: { frame?: { w: number; h: number }; srcFps: number; step: number; frames: number; wallSec: number; w: number; h: number; set: { pose: string; delegate: string; width: number }; mp4?: unknown; rf?: { runs: number; hits: number } };
   calib?: { notes: string[] };
 }
 export interface Shot { t: number; cap: string; blob: Blob; seg?: number; fix?: string }

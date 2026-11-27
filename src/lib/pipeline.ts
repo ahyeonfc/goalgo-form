@@ -90,7 +90,7 @@ export async function runAnalysis(opt: {
     onProgress({ step: 3, pct: 0.97, text: '코칭과 장면 사진 만드는 중…' });
     const shots = await makeShots(v, scanner.W, raw, result);
     result.notes = [...notes, ...result.notes];
-    result.scan = { frame, srcFps: +srcFps.toFixed(2), step, frames: raw.length, wallSec: +((performance.now() - t0) / 1000).toFixed(1), w: v.videoWidth, h: v.videoHeight, set: { ...settings, delegate: scanner.m.delegate }, mp4: info };
+    result.scan = { frame, srcFps: +srcFps.toFixed(2), step, frames: raw.length, wallSec: +((performance.now() - t0) / 1000).toFixed(1), w: v.videoWidth, h: v.videoHeight, set: { ...settings, delegate: scanner.m.delegate }, mp4: info, rf: scanner.rfRuns ? { runs: scanner.rfRuns, hits: scanner.rfHits || 0 } : undefined };
     const rec: Rec = { range: opt.range ? { t0: +r0.toFixed(2), t1: +r1.toFixed(2) } : undefined, id: `v_${takenAt}_${blob.size}` + (opt.range ? `_${Math.round(r0)}-${Math.round(r1)}` : ''), name, size: blob.size, takenAt, lesson: dateKey(takenAt), analyzedAt: Date.now(), appVer: APP_VER, result, rawGz: await S.gz(raw), shots };
     await S.resPut(rec);
     S.persist();

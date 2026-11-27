@@ -67,6 +67,7 @@ function pickBall(cands, prev, body, statics = [], feet = []) {
   }
   return best;
 }
+import { loadRfBall, rfBallDetect } from './rfball.js';
 const toCand = (d, ox = 0, oy = 0, k = 1) => { const b = d.boundingBox; return { x: ox + (b.originX + b.width / 2) * k, y: oy + (b.originY + b.height / 2) * k, r: (b.width + b.height) / 4 * k, conf: d.categories[0].score }; };
 // 같은 공이 두 번(전체·확대) 잡히면 하나로
 function dedupe(cs) { const out = []; for (const c of cs.sort((a, b) => b.conf - a.conf)) if (!out.some(o => Math.hypot(o.x - c.x, o.y - c.y) < Math.max(o.r, c.r))) out.push(c); return out; }
@@ -76,6 +77,7 @@ export class Scanner {
   async init(onSay) {
     onSay && onSay('분석 모델 준비 중… (처음 한 번은 내려받느라 시간이 걸려요)');
     this.m = await models(this.set);
+    if (this.set.rfBall !== false) this.rf = await loadRfBall(onSay); // 보조 공 찾기(못 찾은 장면에만)
     const v = this.video, W = this.set.width;
     this.W = Math.min(W, v.videoWidth); this.H = Math.round(this.W * v.videoHeight / v.videoWidth);
     this.cv.width = this.W; this.cv.height = this.H;
@@ -113,6 +115,14 @@ export class Scanner {
           cands = dedupe([...cands, ...(r2.detections || []).map(d => toCand(d, cx0, cy0, 1 / k))]);
         }
       }
+    }
+    // 두 번 찾아도 공이 없으면 RF-DETR 로 한 번 더(사람 주변 영역, 없으면 화면 전체)
+    if (!cands.length && this.rf) {
+      try {
+        if (body) { const h = body.h, x0 = Math.max(0, body.x0 - 0.6 * h), x1 = Math.min(this.W, body.x1 + 0.6 * h), y0 = Math.max(0, body.y0 - 0.8 * h), y1 = Math.min(this.H, body.y1 + 0.15 * h), s = Math.max(x1 - x0, y1 - y0), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, sx = Math.max(0, Math.min(this.W - s, cx - s / 2)), sy = Math.max(0, Math.min(this.H - s, cy - s / 2)), sw = Math.min(s, this.W), sh = Math.min(s, this.H); cands = await rfBallDetect(this.rf, this.cv, sx, sy, sw, sh, sx, sy, 1); }
+        else cands = await rfBallDetect(this.rf, this.cv, 0, 0, this.W, this.H);
+        this.rfHits = (this.rfHits || 0) + (cands.length ? 1 : 0); this.rfRuns = (this.rfRuns || 0) + 1;
+      } catch (e) { this.rf = null; }
     }
     // 가만히 있는 공 기억: 후보마다 같은 자리에 몇 장 연속 있었나
     const st = this.statics || (this.statics = []);
