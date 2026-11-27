@@ -42,6 +42,7 @@ src/
   engine/timescale.js        슬로모션 배율(떨어지는 공 가속도)
   engine/general.js          동작과 상관없는 전체 코칭(결과 맨 위)
   engine/ballonly.js         몸이 안 보일 때 공 움직임만으로 코칭
+  engine/posture.js          자세 코칭(공에 닿는 순간: 디딤 다리 무릎·상체 앞뒤·리프팅 발등, 차기는 coach.js 연구 기준 항목을 끌어올림). 옆·비스듬히 찍을 때만
   ui/                        React 화면: App(화면 전환·뒤로 가기·아래 메뉴 분석/일지/성장/설정), Setup, Home(Home·Journal·Growth), Run(① RangePicker 구간·사람 고르기 → ② 분석 중), Result(위쪽 탭 코칭/다시 보기/계획/자세히), Replay(관절 선 다시 보기), SettingsView(기록 내보내기·가져오기), app.css
   lib/                       pipeline.ts(영상 → 원재료 → 엔진 → 장면 사진 → 저장, 다시 계산, range·target), backup.ts(기록 파일 .goalgoform = gzip JSON, 늦게 분석한 쪽 남김), draw.ts(관절 선), fmt.ts, types.ts(결과 형식)
   scan.js                    MediaPipe 자세(numPoses 4, 고른 사람·이어지는 사람 따라가기, 순간이동이면 그 장면 버림) + 공(EfficientDet-Lite2 전체 + 사람 주변 확대, 몸 가깝고 이어지는 공, 가만히 있는 공 거르기)
@@ -75,4 +76,6 @@ docs/                        설계(lesson-*), 도전 모드(challenge.md), 자�
 - [x] (2026-11-27) **골고 폼 앱(TWA)**: 비공개 저장소 `ahyeonfc/matchcam` 의 `goalgoform/` 모듈(`com.goalgo.form`, androidbrowserhelper 2.5.0, 갤러리 영상 공유 → 웹 share_target). 그 저장소의 서명 키·빌드 작업을 같이 써서 Actions 아티팩트 `MatchCam-apk` 안 `GoalGoForm-….apk` 로 나옴(릴리스 목록엔 안 넣음). 앱 자체는 골고와 아무것도 안 나눔. 서명 SHA256 은 `docs/app/assetlinks.json` → `ahyeonfc.github.io` 저장소의 `.well-known/assetlinks.json` 에 넣음(2026-11-27, 저장소 `ahyeonfc/ahyeonfc.github.io` 사용자가 만듦, 공개 주소에서 확인함. 첫 화면 index.html 은 골고·골고 폼 링크)
 - [x] (0.7.1, 2026-11-27) 드라이브 동기화 켬: Google Cloud 프로젝트 `goalgo-form`(사용자가 만듦, 동의 화면 프로덕션, drive.file), 웹 클라이언트 ID `425392299573-cmk68jnfi8ej227t7v4a7r315fio5ngq.apps.googleusercontent.com`(공개 값, `config.ts`), 승인된 출처 https://ahyeonfc.github.io. 개인정보처리방침 1.1(드라이브 항목·Google API 사용자 데이터 정책 문구). 실제 폰 로그인·동기화는 사용자 확인 전
 - [x] (0.7.2, 2026-11-27) **한 발 연습은 지적하지 않음**(사용자: "일부러 한 발만 쓰는 건데"): 한 발 85% 이상이면 "쓴 발: ○발 연습"으로 기록(general p.main_foot), 다른 날 반대 발 기록이 있으면 두 발의 빠르기·박자를 비교해 느린 쪽을 짚음. 토 탭 번갈아 20% 미만 = 한 발 연습(지적 없음), 드리블 한 발 위주도 기록만. 시험 30개
+- [x] (0.8.0, 2026-11-27) **자세 코칭**(사용자: "자세를 잡아주고 싶은데 그런 게 없다"): 코칭 탭 맨 앞 "🧍 자세" 카드. 공 다루기 = 터치 순간 디딤 다리 무릎(10° 미만이면 쭉 펴짐), 상체가 공보다 뒤로 빠짐(−8° 넘게), 리프팅 = 발 닿을 때 발등 기울기(35° 넘게 발끝이 떨어짐), 차기 = 디딤발 앞뒤·옆 간격·디딤 무릎·몸 젖힘·마무리(02-shot.md 연구 기준). 숫자 문턱은 연구 값이 없는 것은 "누가 봐도" 넉넉한 값 + 지도 원칙이라고 why 에 밝힘(criteria engine.posture 로 바꿀 수 있게 이름만 둠). 고칠 점마다 장면 사진(seg −2)·고치는 순서·이 장면 보기. 정면 영상은 "옆에서 찍어야 잴 수 있어요" 안내. 시험 32개(다리 편 토 탭·발끝 떨어진 리프팅 합성)
+- 다음 자세 후보: 퍼스트 터치 받는 발 무릎(Tahara 2012 약 37~39°), 차기 발 어느 면(인사이드·발등)에 맞았나(발 방향 대 공 방향), 드리블 상체 좌우 큰 기울기(R7, 개인 비교), 팔 균형. 실제 영상 정답으로 문턱 맞추기
 - [ ] 드리블 끝까지 → 정답 도구로 시험 → 정답 도구로 시험 → 나머지 동작

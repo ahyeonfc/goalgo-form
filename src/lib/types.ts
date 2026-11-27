@@ -4,7 +4,9 @@ export interface CoachItem { title: string; text: string; why?: string; t?: numb
 export interface Coach { good: CoachItem[]; fixes: CoachItem[]; drill?: { name: string; text: string }; tip?: string; facts: { k: string; v: string }[] }
 export interface Seg { motion: string; name: string; t0: number; t1: number; prims: Record<string, unknown>; marks: Mark[]; view?: string; coach: Coach; drops?: number[] }
 export interface Note { kind: 'warn' | 'info'; text: string }
-export interface General { span: [number, number] | null; good: CoachItem[]; fixes: CoachItem[]; drill?: { name: string; text: string }; plan?: { day: string; title: string; text: string }[]; facts: { k: string; v: string }[]; p?: Record<string, number | null>; marks: Mark[] }
+export interface General { span: [number, number] | null; good: CoachItem[]; fixes: CoachItem[]; drill?: { name: string; text: string }; plan?: { day: string; title: string; text: string }[]; facts: { k: string; v: string }[]; p?: Record<string, number | null>; marks: Mark[]; ballOnly?: boolean; posture?: Posture }
+export interface PostureItem { ok: boolean; title: string; text: string; why?: string; t?: number; how?: string[]; sev?: number }
+export interface Posture { fixes: PostureItem[]; good: PostureItem[]; side: boolean; checked: boolean; hint: string | null }
 export interface FreeResult {
   free: string; fps: number; heightCm: number; dur: number; frames: number; poseSeen: number; ballSeen: number;
   poseOk: boolean; ballRatio: number | null; view: { view: string }; notes: Note[]; segs: Seg[]; general?: General | null; timeScale?: { k: number } | null;

@@ -33,7 +33,7 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
 
   const motions = [...new Set(segs.map(x => x.motion))];
   const g = r.general && r.general.span ? r.general : null;
-  const nFix = (g?.fixes.length || 0) + segs.reduce((a, x) => a + x.coach.fixes.length, 0), nGood = (g?.good.length || 0) + segs.reduce((a, x) => a + x.coach.good.length, 0);
+  const nFix = (g?.fixes.length || 0) + (g?.posture?.fixes.length || 0) + segs.reduce((a, x) => a + x.coach.fixes.length, 0), nGood = (g?.good.length || 0) + (g?.posture?.good.length || 0) + segs.reduce((a, x) => a + x.coach.good.length, 0);
   const shotIdx = (k: number, title: string) => (rec.shots || []).findIndex(x => x.seg === k && x.fix === title);
   const jump = (t: number) => { setTab('replay'); window.scrollTo(0, 0); setTimeout(() => replay.current?.seek(t - 0.6, true), 50); };
   const others = (rec.shots || []).map((s, i) => ({ s, u: urls[i] })).filter(x => !x.s.fix);
@@ -57,6 +57,22 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
       {!g && !segs.length && <div className="nofix">분석할 장면을 찾지 못했어요. "🦴 다시 보기"에서 몸·공이 제대로 잡혔는지 확인해 보세요.</div>}
       {!g && segs.length > 0 && <div className="nofix">동작별 코칭은 "➕ 자세히"에 있어요.</div>}
 
+      {g?.posture && (g.posture.checked || g.posture.hint) && (
+        <div className="card coach posture">
+          <div className="hd"><span className="ic">🧍</span><div><b>자세</b><span>공에 닿는 순간의 몸 모양</span></div></div>
+          <div className="bd">
+            {g.posture.fixes.map(f => { const si = shotIdx(-2, f.title); return (
+              <div className="pt fix" key={f.title}><span className="e">🔧</span><div><b>{f.title}</b><p>{f.text}</p>
+                {f.how && <ol className="how">{f.how.map(h => <li key={h}>{h}</li>)}</ol>}
+                {si >= 0 && <img className="shot" src={urls[si]} alt="" />}
+                {f.why && <small>근거: {f.why}</small>}
+                {f.t != null && <button className="jump" onClick={() => jump(f.t!)}>▶ 이 장면 보기 ({fmtT(f.t)})</button>}</div></div>); })}
+            {g.posture.good.map(x => <div className="pt good" key={x.title}><span className="e">👍</span><div><b>{x.title}</b><p>{x.text}</p></div></div>)}
+            {g.posture.checked && !g.posture.fixes.length && !g.posture.good.length && <div className="nofix">이 영상에서는 자세를 판단할 만큼 터치 장면이 충분하지 않았어요.</div>}
+            {g.posture.hint && <div className="pt tip"><span className="e">📱</span><div><b>자세를 보려면</b><p>{g.posture.hint}</p></div></div>}
+          </div>
+        </div>
+      )}
       {g && (
         <div className="card coach">
           <div className="hd"><span className="ic">🧑‍🏫</span><div><b>코칭</b><span>{fmtT(g.span![0])} ~ {fmtT(g.span![1])} · {(g as any).ballOnly ? '공 움직임을 보고' : '영상 전체를 보고'}</span></div></div>

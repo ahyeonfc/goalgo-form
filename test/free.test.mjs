@@ -102,3 +102,17 @@ test('한 발 연습: 다른 날 반대 발 기록이 있으면 두 발 빠르�
   const r = analyzeFree(synthTap({ n: 24, alt: false, gap: 0.4 }).raw, { heightCm: 175, fps: 30, criteria, profile: { foot: 'r' }, history: [past] });
   assert.ok(r.general.fixes.some(f => /보다 느려요/.test(f.title)), JSON.stringify(r.general.fixes));
 });
+// 자세: 다리를 쭉 편 토 탭 / 발끝이 떨어진 리프팅(옆에서 찍은 합성 영상의 관절을 바꿔서)
+const straightKnees = s => { for (const f of s.raw) if (f.kp) for (const [h, k, a] of [[23, 25, 27], [24, 26, 28]]) if (f.kp[h] && f.kp[a]) f.kp[k] = [(f.kp[h][0] + f.kp[a][0]) / 2, (f.kp[h][1] + f.kp[a][1]) / 2, f.kp[k]?.[2] ?? 1]; return s; };
+test('자세: 디딤 다리를 쭉 펴고 한 토 탭 → "디딤 다리가 쭉 펴져 있어요"', () => {
+  const ok = run(synthTap({ n: 24, gap: 0.35 }));
+  assert.ok(ok.general.posture.good.some(g => /디딤 무릎/.test(g.title)), JSON.stringify(ok.general.posture));
+  const bad = run(straightKnees(synthTap({ n: 24, gap: 0.35 })));
+  assert.ok(bad.general.posture.fixes.some(f => /쭉 펴져/.test(f.title)), JSON.stringify(bad.general.posture));
+});
+test('자세: 발끝이 아래로 떨어진 리프팅 → "발끝이 아래로 떨어져요"', () => {
+  const s = synthJuggle({ n1: 12, n2: 6 });
+  for (const f of s.raw) if (f.kp) for (const [h, t] of [[29, 31], [30, 32]]) if (f.kp[h] && f.kp[t]) { const dx = f.kp[t][0] - f.kp[h][0], L = Math.hypot(dx, f.kp[t][1] - f.kp[h][1]) || 20; f.kp[t] = [f.kp[h][0] + Math.sign(dx || 1) * L * 0.5, f.kp[h][1] + L * 0.87, f.kp[t][2]]; }
+  const r = run(s);
+  assert.ok(r.general.posture.fixes.some(f => /발끝이 아래로/.test(f.title)), JSON.stringify(r.general.posture));
+});

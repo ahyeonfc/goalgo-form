@@ -1,6 +1,7 @@
 // 자유 분석: 찍은 영상만 넘기면 구간마다 무슨 동작인지 알아채고(리프팅·공 다루기·드리블·차기), 코칭을 만든다.
 // 우선순위: 리프팅(공이 공중) > 차기(임팩트) > 공 다루기(제자리 터치) > 드리블(이동 터치)
 
+import { postureCoach } from './posture.js';
 import { clean } from './clean.js';
 import { measure, viewOf } from './measure.js';
 import { findEvents } from './events.js';
@@ -107,6 +108,8 @@ export function analyzeFree(raw, opts) {
       notes.push({ kind: 'info', text: '몸이 화면에 다 나오지 않아 공 움직임만으로 분석했어요. 무릎 위까지 보이게 찍으면 자세도 봐 드려요.' });
     }
   }
+  // 자세 코칭(공에 닿는 순간의 몸 모양). 공만 보고 코칭한 영상은 몸이 안 보여 빼고 안내만
+  if (general && general.span && !general.ballOnly) general.posture = postureCoach(c, m, { marks: general.marks, segs, view: view.view, cfg });
   if (poseOk && !segs.length && !(general && general.span)) {
     const ballSeen = c.ball.filter(Boolean).length / Math.max(1, n), poseSeen = m.bodyC.filter(Boolean).length / Math.max(1, n);
     if (ballSeen < 0.5) notes.push({ kind: 'warn', text: '공이 잘 안 보였어요. 공이 화면에서 너무 작지 않게(3~5m) 찍어 주세요.' });
@@ -133,7 +136,7 @@ function toVideoTime(r, k, est) {
     for (const f of s.coach.fixes) if (isNum(f.t)) f.t = T(f.t);
   }
   r.events.touches = r.events.touches.map(x => ({ ...x, t: T(x.t) }));
-  if (r.general && r.general.span) { r.general.span = r.general.span.map(T); r.general.marks = r.general.marks.map(x => ({ ...x, t: T(x.t) })); for (const f of r.general.fixes) if (isNum(f.t)) f.t = T(f.t); }
+  if (r.general && r.general.span) { r.general.span = r.general.span.map(T); r.general.marks = r.general.marks.map(x => ({ ...x, t: T(x.t) })); for (const f of r.general.fixes) if (isNum(f.t)) f.t = T(f.t); for (const f of r.general.posture?.fixes || []) if (isNum(f.t)) f.t = T(f.t); }
   r.dur = T(r.dur);
   r.timeScale = { k: +k.toFixed(2), est };
   r.notes.unshift({ kind: 'info', text: `슬로모션 영상으로 보여요(실제보다 약 ${k.toFixed(1)}배 느림). 떨어지는 공의 속도로 시간을 맞춰 분석했어요.` });
