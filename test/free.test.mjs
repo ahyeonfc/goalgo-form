@@ -47,3 +47,18 @@ test('몸이 잘린 영상(공이 키에 비해 너무 큼) → 자세 믿지 �
   assert.equal(r.segs.length, 0);
   assert.ok(r.notes.some(n => /머리부터 발끝/.test(n.text)));
 });
+
+test('슬로모션(3배 느림) 리프팅 → 배율을 알아내고 같은 개수, 시각은 영상 시각', () => {
+  const s = synthJuggle({ n1: 12, n2: 6 });
+  const normal = run(s);
+  const slow = { raw: s.raw.map(f => ({ ...f, t: f.t * 3 })) };
+  const r = analyzeFree(slow.raw, { heightCm: 175, fps: 10, criteria, profile: { foot: 'r' } });
+  assert.ok(r.timeScale && Math.abs(r.timeScale.k - 3) < 0.4, `배율 ${JSON.stringify(r.timeScale)}`);
+  assert.equal(r.segs[0].prims.best, normal.segs[0].prims.best);
+  assert.ok(Math.abs(r.segs[0].t0 - normal.segs[0].t0 * 3) < 0.2, `영상 시각 ${r.segs[0].t0} 대 ${normal.segs[0].t0 * 3}`);
+  assert.ok(r.notes.some(n => /슬로모션/.test(n.text)));
+});
+test('보통 속도 리프팅은 슬로모션으로 보지 않음', () => {
+  const r = run(synthJuggle({ n1: 12, n2: 6 }));
+  assert.ok(!r.notes.some(n => /슬로모션 영상으로/.test(n.text)), JSON.stringify(r.timeScale));
+});

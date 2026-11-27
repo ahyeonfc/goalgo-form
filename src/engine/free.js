@@ -11,10 +11,12 @@ import { masteryPrims, tapTouches, pullPushTouches, longestRun } from '../motion
 import { jugglePrims } from '../motions/juggle.js';
 import { findKicks } from '../motions/kick.js';
 import { coachSeg, MOTION_KO } from './coach.js';
+import { estimateTimeScale } from './timescale.js';
 
 export const FREE_VER = 'f1-2026-11-27';
 
-export function analyzeFree(raw, { heightCm, fps, criteria, history = [], profile, frame }) {
+export function analyzeFree(raw, opts) {
+  const { heightCm, fps, criteria, history = [], profile, frame, _scaled } = opts;
   let cfg = { ...criteria.dribble.engine, ...criteria.challenge.engine, frame };
   const c = clean(raw, cfg);
   let m = measure(c, cfg, heightCm);
@@ -23,6 +25,13 @@ export function analyzeFree(raw, { heightCm, fps, criteria, history = [], profil
   const r0 = median(rr), expect = 22 / heightCm;
   let rescaled = false;
   if (isNum(r0) && r0 / expect > 1.35 && r0 <= 0.25) { cfg = { ...cfg, force_scale: 'ball' }; m = measure(c, cfg, heightCm); rescaled = true; }
+  // 슬로모션 알아내기: 날아가는 공의 가속도로 영상이 실제보다 몇 배 느린지(k) 잰다. 느리면 실제 시각으로 바꿔 다시 분석하고, 결과 시각은 영상 시각으로 돌려놓는다
+  const ts0 = _scaled ? null : estimateTimeScale(c, m, heightCm, cfg);
+  if (ts0 && ts0.k && ts0.n >= cfg.ts_min_flights && ts0.k >= cfg.ts_slow) {
+    const k = ts0.k;
+    const out = analyzeFree(raw.map(f => ({ ...f, t: f.t / k })), { ...opts, fps: fps * k, _scaled: k });
+    return toVideoTime(out, k, ts0);
+  }
   const ev = findEvents(m, cfg);
   const calib = calibrate(c, m, heightCm, cfg);
   const n = m.ts.length;
@@ -93,11 +102,27 @@ export function analyzeFree(raw, { heightCm, fps, criteria, history = [], profil
   if (fps < 50 && segs.some(s => s.motion === 'shot' || s.motion === 'pass')) notes.push({ kind: 'info', text: '슬로모션(120fps)으로 찍으면 공 속도와 차는 순간을 더 정확히 봐 드릴 수 있어요.' });
 
   return {
-    free: FREE_VER, fps, heightCm, dur: n ? +(m.ts[n - 1] - m.ts[0]).toFixed(2) : 0, frames: n,
+    free: FREE_VER, timeScale: _scaled ? null : { k: 1, est: ts0 }, fps, heightCm, dur: n ? +(m.ts[n - 1] - m.ts[0]).toFixed(2) : 0, frames: n,
     poseSeen: +(m.bodyC.filter(Boolean).length / Math.max(1, n)).toFixed(2), ballSeen: +(c.ball.filter(Boolean).length / Math.max(1, n)).toFixed(2),
     poseOk, ballRatio: isNum(ballRatio) ? +ballRatio.toFixed(3) : null, view, calib, notes,
     segs, events: { touches: ev.touches.map(t => ({ t: +t.t.toFixed(3), foot: t.foot })), steps: ev.steps.length, cuts: ev.cuts.length },
   };
+}
+
+// 실제 시각으로 분석한 결과의 시각을 영상 시각(× k)으로 돌려놓는다. 빠르기(번/초) 같은 값은 실제 시각 기준 그대로
+function toVideoTime(r, k, est) {
+  const T = t => (isNum(t) ? +(t * k).toFixed(3) : t);
+  for (const s of r.segs) {
+    s.t0 = T(s.t0); s.t1 = T(s.t1);
+    s.marks = s.marks.map(x => ({ ...x, t: T(x.t) }));
+    if (s.drops) s.drops = s.drops.map(T);
+    for (const f of s.coach.fixes) if (isNum(f.t)) f.t = T(f.t);
+  }
+  r.events.touches = r.events.touches.map(x => ({ ...x, t: T(x.t) }));
+  r.dur = T(r.dur);
+  r.timeScale = { k: +k.toFixed(2), est };
+  r.notes.unshift({ kind: 'info', text: `슬로모션 영상으로 보여요(실제보다 약 ${k.toFixed(1)}배 느림). 떨어지는 공의 속도로 시간을 맞춰 분석했어요.` });
+  return r;
 }
 
 function mkSeg(motion, t0, t1, p, marks, extra = {}) { return { motion, name: MOTION_KO[motion], t0, t1, p, marks, ...extra }; }

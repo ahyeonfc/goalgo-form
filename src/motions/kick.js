@@ -43,5 +43,7 @@ export function kickPrims(c, m, ev, imp, ctx) {
 }
 
 export function findKicks(c, m, ev, ctx, busy = []) {
-  return ev.impacts.filter(x => !busy.some(([a, b]) => x.t >= a && x.t <= b)).map(x => ({ t: x.t, i: x.i, foot: x.foot, ...kickPrims(c, m, ev, x, ctx) }));
+  // 거의 수직으로 뜬 공(60° 넘음)은 패스·슈팅이 아니라 리프팅 띄우기라 뺀다
+  return ev.impacts.filter(x => !busy.some(([a, b]) => x.t >= a && x.t <= b)).map(x => ({ t: x.t, i: x.i, foot: x.foot, ...kickPrims(c, m, ev, x, ctx) }))
+    .filter(k => !(isNum(k.launch) && k.launch > 60));
 }
