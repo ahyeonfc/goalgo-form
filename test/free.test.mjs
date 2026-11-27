@@ -28,16 +28,17 @@ test('리프팅 영상 → 리프팅, 너무 높으면 고칠 점', () => {
   assert.equal(r.segs[0].prims.best, 12);
   assert.ok(r.segs[0].coach.fixes.some(f => /높이/.test(f.title)));
 });
-test('한 발 토 탭 → 번갈아 고칠 점', () => {
+test('한 발 토 탭 → 한 발 연습으로 보고 지적하지 않음', () => {
   const r = run(synthTap({ n: 24, alt: false, gap: 0.4 }));
   assert.equal(r.segs[0]?.motion, 'toe_tap');
-  assert.ok(r.segs[0].coach.fixes.some(f => /연달아/.test(f.title)));
+  assert.ok(!r.segs[0].coach.fixes.some(f => /연달아/.test(f.title)), JSON.stringify(r.segs[0].coach.fixes));
 });
-test('드리블 영상 → 드리블, 한 발만 쓰면 고칠 점', () => {
+test('드리블 영상 → 드리블, 한 발만 써도 지적하지 않고 기록만', () => {
   const r = run(synthDribble({ leftShare: 1 }));
   assert.ok(motions(r).includes('dribble'), motions(r).join(','));
   const d = r.segs.find(x => x.motion === 'dribble');
-  assert.ok(d.coach.fixes.some(f => /한 발/.test(f.title)), JSON.stringify(d.coach.fixes));
+  assert.ok(!d.coach.fixes.some(f => /한 발/.test(f.title)), JSON.stringify(d.coach.fixes));
+  assert.ok(d.coach.facts.some(f => f.k === '쓴 발'), JSON.stringify(d.coach.facts));
 });
 test('몸이 잘린 영상(공이 키에 비해 너무 큼) → 자세 믿지 않음', () => {
   const s = synthTap({ n: 24 });
@@ -63,9 +64,11 @@ test('보통 속도 리프팅은 슬로모션으로 보지 않음', () => {
   assert.ok(!r.notes.some(n => /슬로모션 영상으로/.test(n.text)), JSON.stringify(r.timeScale));
 });
 
-test('동작과 상관없는 전체 코칭: 한 발만 쓰는 영상은 "만 주로 써요", 양발 영상은 칭찬', () => {
+test('동작과 상관없는 전체 코칭: 한 발 연습은 지적하지 않고 "○발 연습"으로 기록, 양발 영상은 칭찬', () => {
   const one = run(synthTap({ n: 24, alt: false, gap: 0.4 }));
-  assert.ok(one.general && one.general.fixes.some(f => /만 주로 써요/.test(f.title)), JSON.stringify(one.general?.fixes));
+  assert.ok(one.general && !one.general.fixes.some(f => /주로 써요|양발/.test(f.title)), JSON.stringify(one.general?.fixes));
+  assert.ok(one.general.facts.some(f => f.k === '쓴 발'), JSON.stringify(one.general.facts));
+  assert.ok(one.general.p.main_foot, '한 발 표시');
   const both = run(synthTap({ n: 26, gap: 0.3 }));
   assert.ok(both.general.good.some(g => /양발/.test(g.title)), JSON.stringify(both.general.good));
   assert.ok(!both.general.fixes.some(f => /만 주로/.test(f.title)));
@@ -91,4 +94,11 @@ test('몸이 안 나오고 공만 다리 사이를 오가는 영상 → 공만�
   assert.ok(Math.abs(res.general.p.touches - 30) <= 2, `터치 ${res.general.p.touches}`);
   assert.ok(res.general.fixes.some(f => /오른쪽으로 보낼 때 늦어요/.test(f.title)), JSON.stringify(res.general.fixes.map(f => f.title)));
   assert.ok(res.notes.some(n => /공 움직임만으로/.test(n.text)));
+});
+test('한 발 연습: 다른 날 반대 발 기록이 있으면 두 발 빠르기 비교', () => {
+  const one = run(synthTap({ n: 24, alt: false, gap: 0.4 }));
+  const mf = one.general.p.main_foot, other = mf === 'l' ? 'r' : 'l';
+  const past = { general: { p: { main_foot: other, rate: one.general.p.rate * 1.5, tempo_cv: 10 } } };
+  const r = analyzeFree(synthTap({ n: 24, alt: false, gap: 0.4 }).raw, { heightCm: 175, fps: 30, criteria, profile: { foot: 'r' }, history: [past] });
+  assert.ok(r.general.fixes.some(f => /보다 느려요/.test(f.title)), JSON.stringify(r.general.fixes));
 });

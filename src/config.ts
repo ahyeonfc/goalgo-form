@@ -1,5 +1,5 @@
 // 앱 전체 설정·버전·기능 스위치를 한곳에 둔다
-export const APP_VER = '0.7.1';
+export const APP_VER = '0.7.2';
 /** 도전 모드(과제·단계)는 잠시 숨김(2026-11-27 사용자: 자유 분석 먼저). 엔진은 src/engine/challenge.js 에 그대로 있음 */
 export const SHOW_CHALLENGE = false;
 

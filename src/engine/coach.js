@@ -81,7 +81,9 @@ function coachTap(s, { m, history, fps }) {
   facts.push({ k: '횟수', v: `${p.reps ?? mk.length}번` }, { k: '빠르기', v: isNum(p.rate) ? `${f2(p.rate)}번/초` : '—' }, { k: '번갈아', v: isNum(p.alt) ? pct(p.alt) : '—' });
   if (isNum(p.alt) && p.alt >= 90) good.push({ title: '양발이 고르게 번갈아 나와요', text: `${mk.length}번 중 번갈아 ${pct(p.alt)}. 박자가 거의 끊기지 않았어요.` });
   if (isNum(p.tempo_cv) && p.tempo_cv <= 15) good.push({ title: '박자가 일정해요', text: `간격 흔들림이 ${pct(p.tempo_cv)}로 작아요.` });
-  if (isNum(p.alt) && p.alt < 80) fixes.push({ sev: (80 - p.alt) / 10, title: '한 발이 연달아 나와요', text: `번갈아 ${pct(p.alt)}예요. 오른발·왼발을 소리 내어 "하나, 둘" 세며 번갈아 해 보세요.`, why: '같은 영상 안 비교' });
+  // 한 발로만 하는 연습(번갈아 20% 미만)은 일부러 하는 것으로 보고 지적하지 않는다. 번갈아 하다가 섞일 때만 짚는다
+  if (isNum(p.alt) && p.alt < 20) facts.push({ k: '방식', v: '한 발 연습' });
+  else if (isNum(p.alt) && p.alt < 80) fixes.push({ sev: (80 - p.alt) / 10, title: '번갈아 하다 한 발이 연달아 나와요', text: `번갈아 ${pct(p.alt)}예요. 오른발·왼발을 소리 내어 "하나, 둘" 세며 번갈아 해 보세요.`, why: '같은 영상 안 비교' });
   const g = gapByFoot(mk), r = asym(g.l, g.r);
   // 장면 간격(30fps 0.033초)의 세 배보다 작은 차이는 재는 오차라 지적하지 않는다
   if (r && r >= 1.2 && Math.abs(g.l - g.r) >= Math.max(0.08, 3 / (ctxFps || 30)) && g.nl >= 4 && g.nr >= 4) {
@@ -134,7 +136,8 @@ function coachDribble(s, { m, history }) {
     if (p.touch_rate >= 2.8) good.push({ title: '터치가 잦아요', text: `초당 ${f2(p.touch_rate)}번. 연구에서 빠른 선수 집단(3.0번)에 가까워요.` });
     else if (p.touch_rate < 2.3) fixes.push({ sev: (2.3 - p.touch_rate) * 3 + 1, title: '터치가 드물어요', text: `초당 ${f2(p.touch_rate)}번이에요(연구: 빠른 선수 3.0, 느린 선수 2.3). 한 번 크게 차고 뛰기보다, 걸음을 짧게 해 한두 걸음마다 한 번씩 터치하세요.`, why: '연구 기준(Zago 2016)' });
   }
-  if (isNum(p.foot_ratio) && (p.foot_ratio < 25 || p.foot_ratio > 75) && mk.length >= 6) { const weak = p.foot_ratio < 50 ? 'l' : 'r'; fixes.push({ sev: Math.abs(p.foot_ratio - 50) / 12, title: '한 발만 써요', text: `왼발 ${pct(p.foot_ratio)}. 반대발 사용이 적으면 경기에서 방향이 읽혀요. ${FOOT[weak]}으로 8자 드리블을 따로 해 보세요.`, why: '연구(Mattos dos Reis 2023, 정성) + 같은 영상' }); }
+  // 한 발 위주 드리블은 일부러 하는 연습일 수 있어 지적하지 않고 기록만 한다(2026-11-27 사용자)
+  if (isNum(p.foot_ratio) && (p.foot_ratio < 15 || p.foot_ratio > 85) && mk.length >= 6) facts.push({ k: '쓴 발', v: `${p.foot_ratio > 50 ? '왼발' : '오른발'} 위주` });
   else if (isNum(p.foot_ratio) && p.foot_ratio >= 35 && p.foot_ratio <= 65 && mk.length >= 6) good.push({ title: '양발을 고르게 써요', text: `왼발 ${pct(p.foot_ratio)} · 오른발 ${pct(100 - p.foot_ratio)}.` });
   const pb = pushByFoot(m, mk), r = asym(pb.l, pb.r);
   if (r && r >= 1.4 && pb.nl >= 3 && pb.nr >= 3) { const big = pb.l > pb.r ? 'l' : 'r'; fixes.push({ sev: (r - 1) * 5, title: `${FOOT[big]} 터치가 커요`, text: `${FOOT[big]}로 친 공이 반대 발보다 ${Math.round((r - 1) * 100)}% 멀리 나가요. 공이 멀면 빼앗기기 쉬워요. ${FOOT[big]}은 발 안쪽으로 "톡" 미는 느낌으로 작게 치세요.`, why: '같은 영상 안 비교', t: mk.find(x => x.foot === big)?.t }); }

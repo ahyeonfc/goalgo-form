@@ -84,11 +84,26 @@ export function generalCoach(c, m, ev, cfg, { fps, history = [], view = 'unknown
   if (isNum(p.rate)) facts.push({ k: '박자', v: `초당 ${p.rate.toFixed(1)}번` });
 
   // ── 코칭: 같은 영상 안 비교만
-  // 양발
+  // 쓴 발: 한 발 연습은 일부러 하는 경우가 많아 고칠 점으로 보지 않는다(2026-11-27 사용자).
+  // 한 발 위주면 "오늘은 ○발 연습"으로 기록하고, 다른 날 반대 발로 찍은 기록과 박자·터치를 비교한다.
   const lr = isNum(p.touch_l) ? p.touch_l : p.foot_move_l, basis = isNum(p.touch_l) ? '공 터치' : '발 움직임';
   if (isNum(lr)) {
-    if (lr < 30 || lr > 70) { const weak = lr < 50 ? 'l' : 'r'; fixes.push({ sev: Math.abs(lr - 50) / 10, title: `${FOOT[weak === 'l' ? 'r' : 'l']}만 주로 써요`, text: `${basis} 중 왼발 ${pct(lr)} · 오른발 ${pct(100 - lr)}예요. ${FOOT[weak]}도 같은 동작을 해 보세요. 처음엔 ${FOOT[weak]} 두 번에 반대 발 한 번처럼 섞으면 쉬워요.`, why: '같은 영상 안 왼발·오른발 비교', drill: 'weak' }); }
+    if (lr >= 85 || lr <= 15) { p.main_foot = lr >= 85 ? 'l' : 'r'; facts.push({ k: '쓴 발', v: `${FOOT[p.main_foot]} 연습` }); }
     else if (lr >= 40 && lr <= 60) good.push({ title: '양발을 고르게 써요', text: `${basis} 왼발 ${pct(lr)} · 오른발 ${pct(100 - lr)}.` });
+  }
+  // 다른 날 반대 발로 한 기록과 비교(같은 종류 숫자만)
+  if (p.main_foot) {
+    const other = p.main_foot === 'l' ? 'r' : 'l';
+    const past = [...history].reverse().find(hh => hh.general?.p?.main_foot === other && isNum(hh.general.p.rate));
+    if (past && isNum(p.rate)) {
+      const q = past.general.p, me = FOOT[p.main_foot], ot = FOOT[other];
+      const d = p.rate / q.rate - 1;
+      if (Math.abs(d) >= 0.12) {
+        if (d < 0) fixes.push({ sev: Math.abs(d) * 10, title: `${me}이 ${ot}보다 느려요`, text: `${ot} 연습 때 초당 ${q.rate.toFixed(1)}번, 오늘 ${me}은 ${p.rate.toFixed(1)}번(${Math.round(-d * 100)}% 느림). ${me}은 속도를 조금 낮추고 정확하게 늘려 가세요.`, why: '다른 날 반대 발 연습 기록과 비교', drill: 'weak' });
+        else good.push({ title: `${me}이 ${ot}보다 빨라요`, text: `${ot} 연습 때 초당 ${q.rate.toFixed(1)}번 → 오늘 ${me} ${p.rate.toFixed(1)}번.` });
+      } else good.push({ title: `${me}·${ot} 실력이 비슷해요`, text: `${ot} 연습 초당 ${q.rate.toFixed(1)}번 · 오늘 ${me} ${p.rate.toFixed(1)}번.` });
+      if (isNum(p.tempo_cv) && isNum(q.tempo_cv) && p.tempo_cv >= q.tempo_cv + 15) fixes.push({ sev: (p.tempo_cv - q.tempo_cv) / 10, title: `${me} 박자가 ${ot}보다 흔들려요`, text: `터치 간격 흔들림 ${ot} ${pct(q.tempo_cv)} → ${me} ${pct(p.tempo_cv)}. ${me}은 "하나, 둘" 박자부터 맞춰 보세요.`, why: '다른 날 반대 발 연습 기록과 비교', drill: 'rhythm' });
+    }
   }
   // 박자
   if (isNum(p.tempo_cv)) {
@@ -125,7 +140,7 @@ export function generalCoach(c, m, ev, cfg, { fps, history = [], view = 'unknown
 
   // 축구를 잘하기 위한 코칭: 고칠 점마다 경기에서 왜 중요한지 + 고치는 순서, 잘한 점은 경기에서 써먹는 법(일반적인 지도 원칙, 숫자 기준 아님)
   const WHY = {
-    weak: { game: '경기에서는 상대가 내 주발 쪽만 막으면 돼요. 양발을 쓰면 수비가 방향을 읽기 어렵고, 공을 받는 각도도 두 배로 넓어져요.', how: ['약한 발로 같은 동작을 천천히 10번', '주발 2번 + 약한 발 1번 섞기', '양발 번갈아 같은 박자로'] },
+    weak: { game: '두 발 실력 차이가 줄면 수비가 방향을 읽기 어렵고, 공을 받는 각도도 넓어져요.', how: ['느린 쪽 발로 같은 동작을 70% 빠르기로 10번', '박자가 고르면 조금씩 빠르게', '다음에 같은 자리에서 찍어 다시 비교'] },
     rhythm: { game: '박자가 일정하면 공이 늘 같은 자리에 있어 다음 동작(패스·돌파)을 바로 할 수 있어요. 들쭉날쭉하면 공을 맞추느라 고개를 못 들어요.', how: ['빠르기를 70%로 낮추고 "하나, 둘" 소리 내며', '박자가 고르면 조금씩 빠르게', '음악이나 메트로놈 박자에 맞추기'] },
     endure: { game: '축구는 지친 후반에 실수가 나요. 끝까지 같은 속도로 공을 다루는 힘이 경기 막판 볼 컨트롤을 지켜 줘요.', how: ['20초 + 10초 쉬기로 짧게 끊기', '세트마다 같은 횟수 목표', '쉬는 시간을 조금씩 줄이기'] },
     low: { game: '무릎을 살짝 굽힌 낮은 자세여야 몸싸움에서 밀리지 않고, 방향을 바로 바꿀 수 있어요. 지쳐서 자세가 높아지면 첫 발이 늦어져요.', how: ['시작 전 무릎을 살짝 굽혀 자세 잡기', '동작 중 엉덩이 높이를 일정하게', '지칠 때일수록 자세 높이를 의식하기'] },
@@ -146,7 +161,7 @@ export function generalCoach(c, m, ev, cfg, { fps, history = [], view = 'unknown
   fixes.sort((x, y) => y.sev - x.sev);
   const top = fixes.slice(0, 3);
   const DR = {
-    weak: { name: '약한 발만 1분 × 3세트', text: '오늘 한 동작을 약한 발로만 천천히. 익숙해지면 양발 번갈아.' },
+    weak: { name: '느린 쪽 발 1분 × 3세트', text: '같은 동작을 70% 빠르기로 정확하게. 익숙해지면 조금씩 빠르게.' },
     rhythm: { name: '박자 맞추기 30초 × 4세트', text: '입으로 "하나, 둘" 세며 같은 간격으로. 빠르기보다 고른 박자가 먼저예요.' },
     endure: { name: '20초 하고 10초 쉬기 × 6세트', text: '짧게 끊어 끝까지 같은 속도로. 세트마다 힘 빼기만 생각하기.' },
     low: { name: '낮은 자세로 1분 × 3세트', text: '무릎을 살짝 굽힌 채 시작하고, 끝날 때까지 그 높이를 지키기.' },
@@ -158,7 +173,7 @@ export function generalCoach(c, m, ev, cfg, { fps, history = [], view = 'unknown
   // 이번 주 훈련 계획(3일, 하루 15~20분): 고칠 점 순서대로, 마지막 날은 같은 각도로 다시 찍어 비교
   const plan = [];
   top.slice(0, 2).forEach((f, k) => { const d = DR[f.drill]; if (d) plan.push({ day: `${k + 1}일째`, title: f.title.replace(/요$/, '요 고치기'), text: `${d.name} — ${d.text}` }); });
-  if (!plan.length) plan.push({ day: '1일째', title: '지금 동작 다듬기', text: '오늘 한 동작을 조금 더 빠르게, 같은 박자로 1분 × 3세트.' }, { day: '2일째', title: '약한 쪽 키우기', text: '약한 발·약한 방향으로만 1분 × 3세트.' });
+  if (!plan.length) plan.push({ day: '1일째', title: '지금 동작 다듬기', text: '오늘 한 동작을 조금 더 빠르게, 같은 박자로 1분 × 3세트.' }, p.main_foot ? { day: '2일째', title: '반대 발로도 찍어 보기(선택)', text: `같은 동작을 ${FOOT[p.main_foot === 'l' ? 'r' : 'l']}로 찍어 올리면 두 발의 박자·속도를 비교해 드려요.` } : { day: '2일째', title: '빠르기 한 단계 올리기', text: '박자를 지키면서 조금 더 빠르게 1분 × 3세트.' });
   plan.push({ day: `${plan.length + 1}일째`, title: '다시 찍어 비교하기', text: '같은 자리·같은 각도로 다시 찍어 올리면 얼마나 좋아졌는지 보여 드려요.' });
   return { span: [+t0.toFixed(3), +t1.toFixed(3)], good: good.slice(0, 2), fixes: top, drill, plan, facts, p, marks: marks.map(x => ({ t: +x.t.toFixed(3), foot: x.foot })) };
 }
