@@ -64,3 +64,28 @@ td .why{color:var(--sub);font-size:12px}
 .ver{text-align:center;margin-top:16px}
 details summary{cursor:pointer;color:var(--sub);font-size:13px;padding:6px 0}
 #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 20px);transform:translateX(-50%);background:#2a2f3a;color:var(--txt);padding:10px 16px;border-radius:10px;font-size:14px;max-width:90%;z-index:10}
+.pick.small{padding:16px 14px;margin-top:6px}
+.pick.small .big{font-size:17px}
+.dots{display:flex;gap:5px}
+.dots i{width:12px;height:12px;border-radius:50%;background:#2a2f3a;display:block}
+.dots i.on{background:var(--acc)}
+.dots i.cur{background:transparent;border:2px solid var(--acc)}
+canvas.demo{margin:8px 0 4px}
+ol,ul{margin:4px 0;padding-left:20px}
+li{margin:3px 0}
+.lvl{display:block;width:100%;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#0c0e12;color:var(--txt);margin-bottom:6px}
+.lvl b{display:block;font-size:14px}
+.lvl span{display:block;font-size:13px;color:var(--sub)}
+.lvl small{display:block;font-size:12px;color:var(--sub);margin-top:2px}
+.lvl.on{border-color:var(--acc)}
+.lvl.done b{color:var(--acc)}
+.verdict .big{font-size:28px;font-weight:800}
+.verdict.pass{border-color:#2c6a4c}
+.verdict.pass .big{color:var(--acc)}
+.verdict.fail{border-color:#5a4a20}
+.verdict.fail .big{color:var(--warn)}
+.chk{font-size:14px;margin-top:6px}
+.chk.ok{color:var(--acc)}.chk.bad{color:var(--bad)}
+textarea{width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:#0c0e12;color:var(--txt);font:inherit;font-size:15px;resize:vertical}
+.tl i.drop{background:var(--bad);height:26px;top:4px;width:4px}
+.item .s.ok{color:var(--acc);font-size:16px}.item .s.warn{color:var(--warn);font-size:16px}

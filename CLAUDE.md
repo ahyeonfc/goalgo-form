@@ -35,6 +35,7 @@
 CLAUDE.md, README.md
 docs/lesson-criteria.md     지표 체계 큰 설계
 docs/lesson-build.md        구현 설계(0절 별개 원칙, 1 흐름, 3 보정, 4 분석 위치, 5 엔진, 6 기준표 JSON, 7 정답 도구, 8 저장, 10 만드는 순서)
+docs/challenge.md           도전 모드(항목·과제·변형·단계 구조, 공 다루기 사다리, 판정 방법)
 docs/lesson/01~05-*.md      동작별 ③~⑥: 훈련 방식(권장)·찍는 자리(권장)·단계·지표·기준값(출처)·점수·고칠 말
 bench/index.html            폰 브라우저 분석 속도 시험(MediaPipe tasks-vision 0.10.14: 자세 lite/full/heavy, 공 EfficientDet-Lite0/2 "sports ball", GPU/CPU, 처리 너비, 훑는 간격). MP4 파일 안 장면 시간표(mdhd·stts)로 fps·슬로모션 저장 방식 확인. 결과 복사(JSON). 로컬 시험은 ?src=_local/test.mp4
 bench/_local/               로컬 시험 영상(.gitignore, 올리지 않음)
@@ -46,6 +47,10 @@ js/scan.js                  영상 → 장면별 원재료 raw {t, kp[33][x,y,vi
 js/store.js                 IndexedDB(kv 프로필·설정, inbox 받은 영상, results 결과+원재료 gzip+장면 사진)
 js/mp4info.js               MP4 정보(촬영 시각 mvhd, fps·장면 간격 stts)
 js/engine/                  공통 엔진(DOM 없음, Node 시험 가능): util, clean(빈칸·One Euro·좌우 뒤바뀜), measure(①, 장면별 키 = 몸통÷0.288), events(② 걸음·터치·임팩트·디딤·방향 전환·멈춤), calib(키·공 크기), score(⑤), index(입구, 개인 비교 기준선)
+js/engine/challenge.js      도전 모드: 과제 분석·단계 판정(내 기록 대비 규칙)·진행
+js/motions/mastery.js, juggle.js  공 다루기(토 탭·당기고 밀기)·리프팅 세기
+js/sim.js, js/demo.js       합성 동작(시험·시범 공용), 시범 애니메이션(설명용, 기준 아님)
+criteria/challenge.json     도전 과제·단계·하는 법·찍는 자리·엔진 숫자
 js/motions/dribble.js       드리블 구간(터치 1.5초 안 간격 4번 이상)·지표 기본값
 criteria/dribble.json       드리블 기준표(6절 형식) + 엔진 설정 숫자(engine 칸, 첫 판)
 test/                       엔진 자동 시험(`npm test`, Node 22). synth.mjs 가 정답을 아는 합성 드리블 원재료를 만든다
@@ -59,4 +64,5 @@ test/                       엔진 자동 시험(`npm test`, Node 22). synth.mjs
 - [x] (0.1.0, 2026-11-27, 폰 시험 전) 공통 엔진 + 보정(키·공, 콘 없음) + 드리블 기준표 JSON, 웹 앱 설치·갤러리 공유 받기·폰 저장·결과 화면. 합성 자료 시험 9개 통과, 클라우드 Chromium 에서 첫 설정→분석→결과 흐름 오류 없음(사람이 찍힌 실제 영상으로는 아직 안 돌려 봄)
   - 아직 없음: 콘 찾기·코스(코스 시간·드리블 손실·속도·정확도는 빈칸), 동작 고치기("무슨 동작인가요?"), 드리블 외 동작, 드라이브 백업, 우리 공 감지기 ONNX
   - 확인할 것: 삼성 슬로모션 파일이 실제 120fps 시각으로 저장되는지(아니면 시간 지표가 4배 틀림), 폰 속도(bench), 엔진 숫자(터치 거리 등)는 정답 도구 시험으로 맞춤
+- [x] (0.2.0, 2026-11-27, 폰 시험 전) 도전 모드: 공 다루기 3개(토 탭, 당기고 인사이드·아웃사이드 밀기) + 리프팅. 과제 화면(시범 애니메이션·하는 법·찍는 자리·4단계), 단계 판정(2번 통과하면 다음), 일지(날짜별 기록 + 메모). 시험 18개 통과, 클라우드 Chromium 흐름 확인. 미는 발 = 당긴 발로 가정(사용자 확인 대기)
 - [ ] 드리블 끝까지 → 구글 등록·드라이브 백업 → 정답 도구로 시험 → 나머지 동작

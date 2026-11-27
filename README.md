@@ -11,10 +11,11 @@
 |---|---|
 | [docs/lesson-criteria.md](docs/lesson-criteria.md) | 지표 체계 큰 설계 (기본 측정값 → 사건 → 동작·단계 → 지표 → 기준과 점수 → 피드백) |
 | [docs/lesson-build.md](docs/lesson-build.md) | 구현 설계 (사용 흐름, 보정, 분석 위치, 계산 엔진, 기준표 형식, 정답 도구, 저장) |
+| [docs/challenge.md](docs/challenge.md) | 도전 모드: 항목·과제·단계 구조, 공 다루기 사다리, 판정 방법 |
 | [docs/lesson/](docs/lesson/) | 동작별 지표·기준값·점수·고칠 말 (드리블, 슈팅, 퍼스트 터치, 패스, 달리기·민첩성) |
 
 ## 상태
-0.1.0 (2026-11-27, 폰 시험 전): 영상 고르기·갤러리 공유 받기, 폰 안 분석(MediaPipe 자세 + 공), 공통 엔진, 드리블 점수·고칠 점, 폰 저장.
+0.2.0 (2026-11-27, 폰 시험 전): 도전 모드(공 다루기·리프팅, 시범 애니메이션·단계·일지), 영상 고르기·갤러리 공유 받기, 폰 안 분석(MediaPipe 자세 + 공), 공통 엔진, 드리블 점수·고칠 점, 폰 저장.
 - 앱: https://ahyeonfc.github.io/goalgo-form/
 - 속도 시험: https://ahyeonfc.github.io/goalgo-form/bench/
 - 엔진 시험: `npm test`

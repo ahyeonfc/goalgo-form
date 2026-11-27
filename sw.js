@@ -2,11 +2,11 @@
 
 import { inboxAdd } from './js/store.js';
 
-const SHELL = 'gf-shell-v1', LIB = 'gf-lib-v1';
-const SHELL_FILES = ['./', './index.html', './css/app.css', './manifest.webmanifest', './criteria/dribble.json',
+const SHELL = 'gf-shell-v2', LIB = 'gf-lib-v1';
+const SHELL_FILES = ['./', './index.html', './css/app.css', './manifest.webmanifest', './criteria/dribble.json', './criteria/challenge.json',
   './js/app.js', './js/store.js', './js/mp4info.js', './js/scan.js',
   './js/engine/index.js', './js/engine/util.js', './js/engine/clean.js', './js/engine/measure.js', './js/engine/events.js', './js/engine/calib.js', './js/engine/score.js',
-  './js/motions/dribble.js', './icons/icon.svg', './icons/icon-192.png'];
+  './js/motions/dribble.js', './js/motions/mastery.js', './js/motions/juggle.js', './js/engine/challenge.js', './js/demo.js', './js/sim.js', './icons/icon.svg', './icons/icon-192.png'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(SHELL).then(c => c.addAll(SHELL_FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

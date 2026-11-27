@@ -36,10 +36,14 @@
 
   <!-- 처음 화면 -->
   <section id="v-home" hidden>
-    <label class="pick">
+    <h3 class="h3">도전 과제</h3>
+    <p class="sub">과제를 골라 하는 법을 보고, 찍어서 올리면 단계 통과를 알려 줘요.</p>
+    <div id="chal"></div>
+    <h3 class="h3">자유 분석</h3>
+    <label class="pick small">
       <input id="file" type="file" accept="video/*">
       <span class="big">🎥 영상 고르기</span>
-      <span class="sub">찍은 영상만 넘기면 돼요. 동작과 찍은 방향은 알아서 알아챕니다.</span>
+      <span class="sub">과제 없이 찍은 영상. 지금은 드리블을 알아봐요.</span>
     </label>
     <div id="inbox"></div>
     <div id="installTip" class="card tip" hidden>
@@ -47,7 +51,7 @@
       <p class="sub">설치하면 갤러리에서 영상 → 공유 → "골고 폼"으로 바로 넘길 수 있어요. 크롬 메뉴(⋮) → "홈 화면에 추가".</p>
       <button id="installBtn" class="sec" hidden>지금 설치</button>
     </div>
-    <h3 class="h3">기록</h3>
+    <h3 class="h3">📒 일지</h3>
     <div id="history"><p class="sub empty">아직 분석한 영상이 없어요.</p></div>
   </section>
 
@@ -61,6 +65,9 @@
       <button id="stopRun" class="sec">멈추기</button>
     </div>
   </section>
+
+  <!-- 도전 과제 -->
+  <section id="v-task" hidden></section>
 
   <!-- 결과 -->
   <section id="v-result" hidden></section>

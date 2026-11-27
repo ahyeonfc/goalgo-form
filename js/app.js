@@ -5,8 +5,11 @@ import { mp4Info } from './mp4info.js';
 import { Scanner, grid, denseTimes } from './scan.js';
 import { analyze, ENGINE_VER } from './engine/index.js';
 import { AXES } from './engine/score.js';
+import { analyzeTask, progress } from './engine/challenge.js';
+import { Demo } from './demo.js';
+import { PART_KO } from './motions/juggle.js';
 
-const APP_VER = '0.1.0';
+const APP_VER = '0.2.0';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const DEF_SET = { pose: 'full', ball: 'efficientdet_lite0', delegate: 'GPU', width: 960, step: 30 };
@@ -17,7 +20,7 @@ const AXIS_KO = Object.fromEntries(AXES);
 let profile = null, settings = null, criteria = null, scanner = null, installEvt = null;
 
 // ── 화면 전환(안드로이드 뒤로 가기 버튼도 되게 history 사용)
-const VIEWS = ['setup', 'home', 'run', 'result', 'settings'];
+const VIEWS = ['setup', 'home', 'run', 'result', 'settings', 'task'];
 function show(v, title = '골고 폼', push = true) {
   for (const x of VIEWS) $('v-' + x).hidden = x !== v;
   $('title').textContent = title;
@@ -44,11 +47,21 @@ async function boot() {
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('installBtn').hidden = false; });
   [profile, settings] = await Promise.all([S.kvGet('profile'), S.kvGet('settings')]);
   settings = { ...DEF_SET, ...(settings || {}) };
-  criteria = { dribble: await (await fetch('criteria/dribble.json', { cache: 'no-cache' })).json() };
+  criteria = await loadCriteria();
   if (!profile) { segPick($('footSeg'), 'r'); show('setup', '골고 폼', false); return; }
   goHome(false);
   const shared = new URLSearchParams(location.search).get('shared');
   if (shared) { history.replaceState(null, '', location.pathname); const items = await S.inboxAll(); if (items.length === 1) startFromInbox(items[0]); }
+}
+
+async function loadCriteria() {
+  const get = f => fetch('criteria/' + f, { cache: 'no-cache' }).then(r => r.json());
+  const [dribble, challenge] = await Promise.all([get('dribble.json'), get('challenge.json')]);
+  return { dribble, challenge };
+}
+// 도전 기록(과제 결과만, 오래된 것부터)
+async function taskHistory(before = Infinity) {
+  return (await S.resList()).filter(r => r.result.task && (r.analyzedAt ?? r.takenAt) < before).map(r => r.result);
 }
 
 $('saveSetup').onclick = async () => {
@@ -68,15 +81,31 @@ async function goHome(push = true) {
   $('inbox').innerHTML = inbox.length ? `<h3 class="h3">받은 영상 ${inbox.length}개</h3>` + inbox.map(it => `
     <button class="item" data-in="${it.id}"><span class="k"><b>${esc(it.name)}</b><span class="sub">${(it.blob.size / 1048576).toFixed(0)}MB · 눌러서 분석</span></span><span class="s">▶</span></button>`).join('') : '';
   for (const b of $('inbox').querySelectorAll('[data-in]')) b.onclick = () => startFromInbox(inbox.find(x => x.id === +b.dataset.in));
-  // 기록(레슨 날짜별)
-  const list = (await S.resList()).reverse();
-  if (!list.length) { $('history').innerHTML = '<p class="sub empty">아직 분석한 영상이 없어요.</p>'; return; }
+  // 도전 과제: 묶음별 과제와 단계 진행
+  const all = await S.resList();
+  const ch = criteria.challenge, prog = progress(all.map(r => r.result), ch);
+  $('chal').innerHTML = ch.groups.map(g => `<div class="day">${esc(g.name)}</div>` + g.tasks.map(id => {
+    const t = ch.tasks[id], pg = prog[id];
+    const dots = pg.levels.map(l => `<i class="${l.done ? 'on' : l.n === pg.current ? 'cur' : ''}"></i>`).join('');
+    return `<button class="item" data-task="${id}"><span class="k"><b>${esc(t.name)}</b><span class="sub">${pg.doneCount === pg.levels.length ? '모든 단계 통과 🎉' : `${pg.current}단계 도전 중 · ${esc(t.levels[pg.current - 1].name)}`}</span></span><span class="dots">${dots}</span></button>`;
+  }).join('')).join('');
+  for (const b of $('chal').querySelectorAll('[data-task]')) b.onclick = () => openTask(b.dataset.task);
+  // 일지(날짜별): 도전 결과와 자유 분석
+  const list = all.slice().reverse();
+  if (!list.length) { $('history').innerHTML = '<p class="sub empty">아직 기록이 없어요. 과제를 골라 영상을 올리면 여기에 쌓여요.</p>'; return; }
   let html = '', day = '';
   for (const r of list) {
     if (r.lesson !== day) { day = r.lesson; html += `<div class="day">${esc(day)}</div>`; }
+    const t = r.result.task;
+    if (t) {
+      const key = t.id === 'juggle' ? `최고 ${t.prims.best ?? 0}개` : `${t.prims.reps ?? 0}번${t.prims.rate ? ` · ${(+t.prims.rate).toFixed(1)}번/초` : ''}`;
+      html += `<button class="item" data-id="${esc(r.id)}"><span class="k"><b>${esc(t.name)} ${t.level}단계</b><span class="sub">${hhmm(r.takenAt)} · ${key}${r.memo ? ' · ' + esc(r.memo.split('\n')[0].slice(0, 30)) : ''}</span></span>
+        <span class="s ${t.passed ? 'ok' : 'warn'}">${t.passed ? '통과' : '다시'}</span></button>`;
+      continue;
+    }
     const segs = r.result.segs;
     const top = segs.length ? Math.max(...segs.map(s => s.total ?? -1)) : null;
-    html += `<button class="item" data-id="${esc(r.id)}"><span class="k"><b>${esc(r.name)}</b><span class="sub">${hhmm(r.takenAt)} · ${segs.length ? `드리블 ${segs.length}회` : '동작을 찾지 못함'} · ${VIEW_KO[r.result.view.view]}</span></span>
+    html += `<button class="item" data-id="${esc(r.id)}"><span class="k"><b>${esc(r.name)}</b><span class="sub">${hhmm(r.takenAt)} · 자유 분석 · ${segs.length ? `드리블 ${segs.length}회` : '동작을 찾지 못함'}</span></span>
       <span class="s">${top != null && top >= 0 ? top : '—'}<small>점</small></span></button>`;
   }
   $('history').innerHTML = html;
@@ -96,8 +125,8 @@ document.body.appendChild(video);
 
 $('stopRun').onclick = () => { if (scanner) scanner.stop = true; };
 
-async function startAnalysis(blob, name, inboxId, lastMod) {
-  show('run', '분석 중');
+async function startAnalysis(blob, name, inboxId, lastMod, taskCtx = null) {
+  show('run', taskCtx ? `${criteria.challenge.tasks[taskCtx.id].name} ${taskCtx.level}단계` : '분석 중');
   $('runName').textContent = name; $('prog').style.width = '0%';
   const say = t => $('stat').textContent = t;
   const url = URL.createObjectURL(blob);
@@ -128,17 +157,20 @@ async function startAnalysis(blob, name, inboxId, lastMod) {
     const dense = srcFps > step * 1.5;
     let raw = await scanner.scanTimes(grid(0, dur - 0.001, step), onFrame(0, dense ? 0.7 : 0.95));
     if (scanner.stop) throw new Error('멈췄어요');
-    const past = (await S.resList()).filter(r => r.takenAt < takenAt).map(r => r.result);
-    let result = analyze(raw, { heightCm: profile.heightCm, fps: srcFps, criteria, history: past });
+    const past = taskCtx ? await taskHistory() : (await S.resList()).filter(r => r.takenAt < takenAt && !r.result.task).map(r => r.result);
+    const engine = rw => taskCtx
+      ? analyzeTask(rw, { taskId: taskCtx.id, level: taskCtx.level, heightCm: profile.heightCm, fps: srcFps, criteria, history: past, profile })
+      : analyze(rw, { heightCm: profile.heightCm, fps: srcFps, criteria, history: past });
+    let result = engine(raw);
     // 2차: 슬로모션이면 터치·임팩트 앞뒤만 모든 장면
     if (dense && !scanner.stop) {
-      const evT = [...result.events.touches, ...result.events.impacts].map(e => e.t);
+      const evT = taskCtx ? result.marks.map(e => e.t) : [...result.events.touches, ...result.events.impacts].map(e => e.t);
       const more = denseTimes(evT, srcFps, dur, raw.map(f => f.t));
       if (more.length) {
         say(`사건 ${evT.length}곳 앞뒤를 촘촘히 다시 보는 중…`);
         const add = await scanner.scanTimes(more, onFrame(0.7, 0.25));
         raw = [...raw, ...add].sort((a, b) => a.t - b.t);
-        result = analyze(raw, { heightCm: profile.heightCm, fps: srcFps, criteria, history: past });
+        result = engine(raw);
       }
     }
     say('장면 사진 만드는 중…');
@@ -147,7 +179,7 @@ async function startAnalysis(blob, name, inboxId, lastMod) {
     result.notes = [...notes, ...result.calib.notes];
     result.scan = { srcFps: +srcFps.toFixed(2), step, frames: raw.length, wallSec: +((performance.now() - t0) / 1000).toFixed(1), w: video.videoWidth, h: video.videoHeight, set: { ...settings, delegate: scanner.m.delegate }, mp4: info };
     const rec = {
-      id: `v_${takenAt}_${blob.size}`, name, size: blob.size, takenAt, lesson: dateKey(takenAt), analyzedAt: Date.now(),
+      id: taskCtx ? `t_${taskCtx.id}_${taskCtx.level}_${takenAt}_${blob.size}` : `v_${takenAt}_${blob.size}`, name, size: blob.size, takenAt, lesson: dateKey(takenAt), analyzedAt: Date.now(),
       appVer: APP_VER, result, rawGz: await S.gz(raw), shots,
     };
     await S.resPut(rec);
@@ -184,6 +216,10 @@ async function makeShots(raw, result) {
     const pick = [...new Set([0, Math.floor(tc.length / 2), tc.length - 1])].map(i => tc[i]);
     for (const t of pick) want.push({ t: t.t, cap: `${k + 1}회 터치(${t.foot === 'l' ? '왼발' : t.foot === 'r' ? '오른발' : '?'}) ${fmtT(t.t)}` });
   }
+  if (result.task) {
+    const mk = result.marks, n = Math.min(6, mk.length);
+    for (let k = 0; k < n; k++) { const x = mk[Math.round(k * (mk.length - 1) / Math.max(1, n - 1))]; want.push({ t: x.t, cap: `${x.foot === 'l' ? '왼발' : x.foot === 'r' ? '오른발' : PART_KO[x.part] || ''} ${x.kind === 'pull' ? '당기기' : x.kind === 'push' ? '밀기' : '터치'} ${fmtT(x.t)}` }); }
+  }
   if (!want.length) for (const t of result.events.touches.slice(0, 4)) want.push({ t: t.t, cap: `터치 ${fmtT(t.t)}` });
   const out = [], W = 480, cv = document.createElement('canvas');
   cv.width = W; cv.height = Math.round(W * video.videoHeight / video.videoWidth);
@@ -206,6 +242,7 @@ function openResult(rec, push = true) {
   show('result', rec.name, push);
   shotUrls.forEach(URL.revokeObjectURL); shotUrls = [];
   const r = rec.result, el = $('v-result');
+  if (r.task) return taskResult(rec, el);
   const sc = r.scan || {};
   let h = `<div class="card"><div class="sub">${esc(rec.lesson)} ${hhmm(rec.takenAt)} · ${fmtT(r.dur)} · ${sc.srcFps ? Math.round(sc.srcFps) + 'fps' : ''} · 찍은 방향 ${VIEW_KO[r.view.view]}</div>`;
   if (!r.segs.length) {
@@ -279,6 +316,82 @@ function segCard(s, k, r) {
     }
   }
   return h + `</table></div>`;
+}
+
+// ── 도전 과제 화면: 시범 애니메이션, 하는 법, 찍는 자리, 단계와 통과 조건, 영상 올리기
+let demo = null;
+async function openTask(id, push = true) {
+  const ch = criteria.challenge, t = ch.tasks[id];
+  show('task', t.name, push);
+  const prog = progress((await S.resList()).map(r => r.result), ch)[id];
+  let pick = prog.current;
+  const el = $('v-task');
+  const lvHtml = () => t.levels.map(l => { const x = prog.levels[l.n - 1]; return `<button class="lvl ${l.n === pick ? 'on' : ''} ${x.done ? 'done' : ''}" data-lv="${l.n}">
+      <b>${l.n}단계 · ${esc(l.name)} ${x.done ? '✓' : ''}</b><span>${esc(l.text)}</span><small>${x.tries ? `통과 ${x.passes}/${ch.pass_need} · 시도 ${x.tries}번` : '아직 안 해 봄'}</small></button>`; }).join('');
+  el.innerHTML = `
+    <div class="card"><div class="sub">${esc(t.goal)}</div>
+      <canvas id="demoCv" class="demo"></canvas>
+      <div class="row2"><button class="sec" id="dPlay">⏸ 멈춤</button><button class="sec" id="dSlow">🐢 느리게</button></div>
+      <p class="sub">시범 애니메이션(설명용). <b style="color:var(--l)">파란 다리 = 왼발</b>, <b style="color:var(--r)">주황 다리 = 오른발</b>, 공이 반짝이면 닿는 순간이에요.</p></div>
+    <div class="card"><h2>하는 법</h2><p class="sub">${esc(t.setup)}</p><ol>${t.how.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+      <h2 style="margin-top:10px">잘하는 사람은</h2><ul>${t.points.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+      <h2 style="margin-top:10px">흔한 실수</h2><ul>${t.mistakes.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+    <div class="card"><h2>📱 찍는 자리</h2><p>${esc(t.cam.text)}</p><p class="sub">시작 전에 1초 가만히 서 있으면 크기를 더 정확히 맞춰요.</p></div>
+    <div class="card"><h2>단계 고르기</h2><div id="lvList">${lvHtml()}</div>
+      <p class="sub">같은 단계를 ${ch.pass_need}번 통과하면 다음 단계가 열려요. 단계 숫자는 골고 폼이 정한 첫 판 규칙이에요(연구 기준 아님).</p>
+      <label class="pick small"><input id="taskFile" type="file" accept="video/*"><span class="big" id="goBtn">🎥 ${pick}단계 영상 올리기</span><span class="sub">찍어 둔 영상을 고르세요</span></label></div>`;
+  demo = new Demo($('demoCv'), t.demo);
+  $('dPlay').onclick = () => { demo.playing = !demo.playing; $('dPlay').textContent = demo.playing ? '⏸ 멈춤' : '▶ 재생'; };
+  $('dSlow').onclick = () => { demo.speed = demo.speed === 1 ? 0.4 : 1; $('dSlow').textContent = demo.speed === 1 ? '🐢 느리게' : '🐇 보통 속도'; };
+  $('lvList').onclick = e => { const b = e.target.closest('[data-lv]'); if (!b) return; pick = +b.dataset.lv; $('lvList').innerHTML = lvHtml(); $('goBtn').textContent = `🎥 ${pick}단계 영상 올리기`; };
+  $('taskFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) startAnalysis(f, f.name, null, null, { id, level: pick }); };
+}
+
+// ── 과제 결과: 통과 판정, 조건별 결과, 지표(지난 기록 대비), 터치 띠, 장면, 일지 메모
+function taskResult(rec, el) {
+  const r = rec.result, t = r.task, ch = criteria.challenge, task = ch.tasks[t.id], chk = t.check;
+  $('title').textContent = `${t.name} ${t.level}단계`;
+  const nextLv = t.level < task.levels.length ? t.level + 1 : null;
+  let h = `<div class="card verdict ${t.passed ? 'pass' : 'fail'}"><div class="big">${t.passed ? '통과! 🎉' : '아직이에요'}</div>
+    <div class="sub">${esc(rec.lesson)} ${hhmm(rec.takenAt)} · ${t.level}단계 ${esc(chk?.name || '')}${t.passed && nextLv ? ` · ${ch.pass_need}번 통과하면 ${nextLv}단계가 열려요` : ''}</div>
+    ${(chk?.checks || []).map(c => `<div class="chk ${c.ok ? 'ok' : 'bad'}">${c.ok ? '✓' : '✗'} ${esc(c.text)}</div>`).join('')}</div>`;
+  const noCount = !t.prims.reps && !t.prims.best;
+  if (noCount) {
+    h += `<div class="card"><h2>동작을 세지 못했어요</h2><p class="sub">자세를 찾은 장면 ${Math.round(r.poseSeen * 100)}%, 공을 찾은 장면 ${Math.round(r.ballSeen * 100)}%.</p>
+      ${r.poseSeen < 0.6 ? '<div class="note">몸이 잘 안 잡혔어요. 몸(리프팅은 머리부터 발끝까지, 공 다루기는 무릎 아래와 공)이 화면에 다 들어오게 찍어 주세요.</div>' : ''}
+      ${r.ballSeen < 0.5 ? '<div class="note">공이 잘 안 잡혔어요. 폰을 더 가까이(3m) 두고, 공이 화면에서 작지 않게 찍어 주세요.</div>' : ''}
+      ${r.view.view !== task.cam.view && r.view.view !== 'unknown' ? `<div class="note">이 과제는 ${VIEW_KO[task.cam.view]}에서 찍어야 잘 보여요. 지금 영상은 ${VIEW_KO[r.view.view]}에서 찍은 것 같아요.</div>` : ''}</div>`;
+  }
+  h += `<div class="card"><h2>기록</h2><table>` + r.rows.map(x => {
+    let sub = x.value == null ? esc(x.why || '') : noCount ? '' : x.delta != null ? `<span class="${x.better == null ? '' : x.better ? 'ok' : 'warn'}">지난 평균 ${x.base} 대비 ${x.delta > 0 ? '+' : ''}${x.delta}</span>` : '첫 기록';
+    return `<tr><td>${esc(x.name)}${x.note ? `<div class="why">${esc(x.note)}</div>` : ''}</td><td class="v">${x.value ?? '—'}${x.value != null && x.unit ? `<span class="tag">${esc(x.unit)}</span>` : ''}<div class="why">${sub}</div></td></tr>`;
+  }).join('') + `</table>${t.parts && Object.keys(t.parts).length ? `<p class="sub">닿은 곳: ${Object.entries(t.parts).map(([k, v]) => `${PART_KO[k] || k} ${v}`).join(' · ')}</p>` : ''}</div>`;
+  if (r.dur > 0 && r.marks.length) {
+    const pc = x => (100 * x / r.dur).toFixed(2);
+    h += `<div class="card"><h2>터치 띠</h2><div class="tl">${t.t0 != null ? `<span class="seg" style="left:${pc(t.t0)}%;width:${pc(t.t1 - t.t0)}%"></span>` : ''}` +
+      r.marks.map(x => `<i class="${x.foot || 'u'}" style="left:${pc(x.t)}%"></i>`).join('') + (r.drops || []).map(x => `<i class="drop" style="left:${pc(x)}%"></i>`).join('') +
+      `</div><div class="legend"><b class="l">■ 왼발</b> <b class="r">■ 오른발</b> ■ 기타${r.drops?.length ? ' · <b style="color:var(--bad)">■ 떨어뜨림</b>' : ''} · 초록 띠 = 셈에 들어간 구간</div></div>`;
+  }
+  if (rec.shots?.length) h += `<div class="card"><h2>장면</h2><div class="shots">` + rec.shots.map(x => { const u = URL.createObjectURL(x.blob); shotUrls.push(u); return `<figure><img src="${u}" alt=""><figcaption>${esc(x.cap)}</figcaption></figure>`; }).join('') + `</div></div>`;
+  h += `<div class="card"><h2>📝 오늘 메모</h2><textarea id="memo" rows="3" placeholder="예: 왼발이 자꾸 늦음, 코치님이 무릎 더 굽히래">${esc(rec.memo || '')}</textarea><button class="sec" id="saveMemo">메모 저장</button></div>`;
+  // 제자리 과제는 키 비율만 쓰므로 크기 알림은 공·키가 크게 어긋날 때만
+  const notes = r.calib.warn ? r.calib.notes.filter(n => /공 크기/.test(n)) : [];
+  if (notes.length) h += `<div class="card"><h2>알림</h2>${notes.map(n => `<div class="note">${esc(n)}</div>`).join('')}</div>`;
+  h += `<div class="card"><div class="row2"><button class="sec" id="again">같은 단계 다시</button><button class="sec" id="toTask">과제 화면으로</button></div>
+    <div class="row2"><button class="sec" id="reCalc">최신 기준으로 다시 계산</button><button class="sec" id="del" style="color:var(--bad)">지우기</button></div>
+    <details><summary>분석 정보</summary><p class="sub">장면 ${r.frames}장 · ${r.scan?.wallSec ?? '—'}초 · 찍은 방향 ${VIEW_KO[r.view.view]} · 자세 ${Math.round(r.poseSeen * 100)}% · 공 ${Math.round(r.ballSeen * 100)}% · ${esc(r.engine)} · ${esc(r.criteriaVer)}</p></details></div>`;
+  el.innerHTML = h;
+  $('saveMemo').onclick = async () => { rec.memo = $('memo').value.trim(); await S.resPut(rec); toast('메모를 일지에 저장했어요'); };
+  $('toTask').onclick = () => openTask(t.id);
+  $('again').onclick = () => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'video/*'; i.onchange = () => { const f = i.files[0]; if (f) startAnalysis(f, f.name, null, null, { id: t.id, level: t.level }); }; i.click(); };
+  $('reCalc').onclick = async () => {
+    const raw = await S.gunzip(rec.rawGz); if (!raw) return toast('원재료가 없어요');
+    criteria = await loadCriteria();
+    const past = await taskHistory(rec.analyzedAt ?? rec.takenAt);
+    const nr = analyzeTask(raw, { taskId: t.id, level: t.level, heightCm: profile.heightCm, fps: r.fps, criteria, history: past, profile });
+    nr.scan = r.scan; rec.result = nr; await S.resPut(rec); toast('다시 계산했어요'); openResult(rec, false);
+  };
+  $('del').onclick = async () => { if (!confirm('이 기록을 지울까요? 갤러리 영상은 그대로 남아요.')) return; await S.resDel(rec.id); history.back(); };
 }
 
 // ── 설정
