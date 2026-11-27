@@ -13,6 +13,7 @@ import { findKicks } from '../motions/kick.js';
 import { coachSeg, MOTION_KO } from './coach.js';
 import { estimateTimeScale } from './timescale.js';
 import { generalCoach } from './general.js';
+import { ballOnlyCoach } from './ballonly.js';
 
 export const FREE_VER = 'f1-2026-11-27';
 
@@ -95,7 +96,17 @@ export function analyzeFree(raw, opts) {
     s.coach = coachSeg(s, { m, c, ev, cfg, heightCm, fps, view: s.view, history, profile });
   }
   // 동작과 상관없는 전체 코칭(몸이 보이면 항상)
-  const general = poseOk ? generalCoach(c, m, ev, cfg, { fps, history, view: view.view, bodyCut: rescaled }) : null;
+  let general = poseOk ? generalCoach(c, m, ev, cfg, { fps, history, view: view.view, bodyCut: rescaled }) : null;
+  // 몸이 화면에 안 나오면(다리·공만 찍은 영상) 공 움직임만으로 코칭한다
+  const bodySeen = m.bodyC.filter(Boolean).length / Math.max(1, n);
+  if (!poseOk || bodySeen < 0.3 || !(general && general.span)) {
+    const bo = ballOnlyCoach(c, cfg, { history });
+    if (bo) {
+      general = bo;
+      for (let k = notes.length - 1; k >= 0; k--) if (notes[k].kind === 'warn') notes.splice(k, 1);
+      notes.push({ kind: 'info', text: '몸이 화면에 다 나오지 않아 공 움직임만으로 코칭했어요. 무릎 위까지 보이게 찍으면 자세도 봐 드려요.' });
+    }
+  }
   if (poseOk && !segs.length && !(general && general.span)) {
     const ballSeen = c.ball.filter(Boolean).length / Math.max(1, n), poseSeen = m.bodyC.filter(Boolean).length / Math.max(1, n);
     if (ballSeen < 0.5) notes.push({ kind: 'warn', text: '공이 잘 안 보였어요. 공이 화면에서 너무 작지 않게(3~5m) 찍어 주세요.' });

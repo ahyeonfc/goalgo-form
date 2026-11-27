@@ -50,7 +50,7 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
 
       {g && (
         <div className="card coach">
-          <div className="hd"><span className="ic">🧑‍🏫</span><div><b>코칭</b><span>{fmtT(g.span![0])} ~ {fmtT(g.span![1])} · 영상 전체를 보고</span></div></div>
+          <div className="hd"><span className="ic">🧑‍🏫</span><div><b>코칭</b><span>{fmtT(g.span![0])} ~ {fmtT(g.span![1])} · {(g as any).ballOnly ? '공 움직임을 보고' : '영상 전체를 보고'}</span></div></div>
           <div className="bd">
             <div className="facts">{g.facts.map(f => <span key={f.k}>{f.k}<b>{f.v}</b></span>)}</div>
             {g.good.map(x => <div className="pt good" key={x.title}><span className="e">👍</span><div><b>{x.title}</b><p>{x.text}</p>{x.game && <p className="game">⚽ {x.game}</p>}</div></div>)}

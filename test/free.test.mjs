@@ -76,3 +76,19 @@ test('몸이 안 보이면 전체 코칭 없이 찍는 법 안내', () => {
   const r = run(s);
   assert.equal(r.general, null);
 });
+
+test('몸이 안 나오고 공만 다리 사이를 오가는 영상 → 공만으로 코칭', () => {
+  // 공이 좌우로 공 지름 3개만큼 0.3초마다 오감, 관절 없음. 오른쪽으로 보낼 때가 더 느림(0.40초)
+  const raw = []; const r = 40, x0 = 400, y0 = 500; let t = 0, k = 0, side = -1; const pts = [{ t: 0, x: x0 - 3 * r }];
+  for (let i = 0; i < 30; i++) { const g = side < 0 ? 0.40 : 0.28; t += g; side = -side; pts.push({ t, x: x0 + side * 3 * r }); }
+  for (let tt = 0; tt <= t; tt += 1 / 30) {
+    while (k + 1 < pts.length && pts[k + 1].t < tt) k++;
+    const a = pts[k], b = pts[Math.min(k + 1, pts.length - 1)], u = b.t > a.t ? (tt - a.t) / (b.t - a.t) : 0;
+    raw.push({ t: +tt.toFixed(4), kp: null, ball: { x: a.x + (b.x - a.x) * u, y: y0, r, conf: 0.8 } });
+  }
+  const res = analyzeFree(raw, { heightCm: 175, fps: 30, criteria, profile: { foot: 'r' } });
+  assert.ok(res.general && res.general.ballOnly, JSON.stringify(res.notes));
+  assert.ok(Math.abs(res.general.p.touches - 30) <= 2, `터치 ${res.general.p.touches}`);
+  assert.ok(res.general.fixes.some(f => /오른쪽으로 보낼 때 늦어요/.test(f.title)), JSON.stringify(res.general.fixes.map(f => f.title)));
+  assert.ok(res.notes.some(n => /공 움직임만으로/.test(n.text)));
+});
