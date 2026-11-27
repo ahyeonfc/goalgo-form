@@ -1,2 +1,4 @@
-# 로컬 시험용 영상(올리지 않음)
-bench/_local/
+# 로컬 시험 영상(올리지 않음)
+public/bench/_local/
+node_modules/
+dist/

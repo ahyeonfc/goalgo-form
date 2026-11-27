@@ -64,7 +64,7 @@
   },
   "engine": {
     "_note": "단위: 길이 = 키 비율, 속도 = 키/초, 시간 = 초. 첫 판 값이라 정답 도구 시험(lesson-build.md 7절)으로 맞춘다.",
-    "vis_min": 0.5, "gap_fill_sec": 0.1, "ball_gap_sec": 0.2, "ball_conf_min": 0.3,
+    "vis_min": 0.5, "gap_fill_sec": 0.1, "ball_gap_sec": 0.2, "ball_conf_min": 0.3, "ball_jump": 2.5, "ball_jump_win": 0.15,
     "euro_min_cutoff": 1.0, "euro_beta": 0.05,
     "contact_h": 0.02, "contact_v": 1.5,
     "touch_dist": 0.10, "touch_gap": 0.25, "touch_dv": 0.15, "touch_ddeg": 20, "vel_win": 0.1, "ball_still": 0.3,

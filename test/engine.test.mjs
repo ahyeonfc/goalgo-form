@@ -3,11 +3,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { synthDribble } from './synth.mjs';
-import { analyze } from '../js/engine/index.js';
-import { metricScore, evalCalc } from '../js/engine/score.js';
-import { fillGaps, fixSwaps } from '../js/engine/clean.js';
+import { analyze } from '../src/engine/index.js';
+import { metricScore, evalCalc } from '../src/engine/score.js';
+import { fillGaps, fixSwaps } from '../src/engine/clean.js';
 
-const dribble = JSON.parse(readFileSync(new URL('../criteria/dribble.json', import.meta.url)));
+const dribble = JSON.parse(readFileSync(new URL('../public/criteria/dribble.json', import.meta.url)));
 const criteria = { dribble };
 const run = (o = {}) => { const s = synthDribble(o); return { s, r: analyze(s.raw, { heightCm: 175, fps: s.fps, criteria }) }; };
 

@@ -44,7 +44,7 @@ export function analyzeTask(raw, { taskId, level, heightCm, fps, criteria, histo
   const ch = criteria.challenge, task = ch.tasks[taskId];
   const cfg = { ...criteria.dribble.engine, ...ch.engine };
   const c = clean(raw, cfg);
-  const m = measure(c, cfg);
+  const m = measure(c, cfg, heightCm);
   const ev = findEvents(m, cfg);
   const calib = calibrate(c, m, heightCm, cfg);
   let out;

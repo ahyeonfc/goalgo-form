@@ -10,15 +10,19 @@ export const J = {
 
 // 인체 비율(키 H 대비 높이). Drillis·Contini 1966, Winter 『Biomechanics and Motor Control of Human Movement』 그림 4.1.
 // 어깨 0.818H, 엉덩이(대전자) 0.530H, 눈 0.936H, 발목 0.039H.
-export const BODY = { torso: 0.818 - 0.530, eyeToAnkle: 0.936 - 0.039 };
+export const BODY = { torso: 0.818 - 0.530, eyeToAnkle: 0.936 - 0.039, shin: 0.285 - 0.039 }; // 정강이 = 무릎 0.285H − 발목 0.039H
 
-export function measure(c, cfg) {
+export function measure(c, cfg, heightCm = 175) {
   const { ts, joints, ball } = c, n = ts.length, P = j => joints[j];
-  const hipC = [], shC = [], torsoPx = [], eyeAnk = [], footLow = [];
+  const hipC = [], shC = [], torsoPx = [], shinPx = [], bodyC = [], eyeAnk = [], footLow = [];
   for (let i = 0; i < n; i++) {
     const h = mid(P(J.hipL)[i], P(J.hipR)[i]), s = mid(P(J.shL)[i], P(J.shR)[i]);
     hipC.push(h); shC.push(s);
     torsoPx.push(h && s ? dist(h, s) : null);
+    const sh = [[J.kneeL, J.ankL], [J.kneeR, J.ankR]].map(([k, a]) => P(k)[i] && P(a)[i] ? dist(P(k)[i], P(a)[i]) : null).filter(isNum);
+    shinPx.push(sh.length ? Math.max(...sh) : null);
+    // 몸 위치: 엉덩이 중심, 다리만 보이면 무릎 중심, 그것도 없으면 발목 중심(다리만 찍은 공 다루기 영상)
+    bodyC.push(h || mid(P(J.kneeL)[i], P(J.kneeR)[i]) || mid(P(J.ankL)[i], P(J.ankR)[i]));
     const eye = mid(P(J.eyeL)[i], P(J.eyeR)[i]) || P(J.eyeL)[i] || P(J.eyeR)[i];
     const ank = [P(J.ankL)[i], P(J.ankR)[i]].filter(Boolean);
     eyeAnk.push(eye && ank.length ? Math.max(...ank.map(a => a.y)) - eye.y : null);
@@ -26,12 +30,18 @@ export function measure(c, cfg) {
     footLow.push(feet.length ? Math.max(...feet.map(p => p.y)) : null);
   }
   // 장면별 화면 속 키(px): 몸통 길이 ÷ 0.288 의 0.5초 중앙값. 카메라에서 멀어지면 작아지므로 장면마다 둔다.
-  const Hpx = rolling(ts, torsoPx.map(v => isNum(v) ? v / BODY.torso : null), 0.5, median);
+  // 몸통이 안 보이면(다리만 찍음) 정강이 ÷ 0.246, 그것도 없으면 공 지름(22cm = 키의 22/heightCm)으로 잰다.
+  const byTorso = rolling(ts, torsoPx.map(v => isNum(v) ? v / BODY.torso : null), 0.5, median);
+  const byShin = rolling(ts, shinPx.map(v => isNum(v) ? v / BODY.shin : null), 0.5, median);
+  const byBall = rolling(ts, ball.map(b => b && isNum(b.r) && b.r > 2 ? 2 * b.r * heightCm / 22 : null), 0.5, median);
+  const Hsrc = [];
+  // cfg.force_scale === 'ball': 몸 일부가 잘려 몸통 크기를 믿을 수 없을 때 공 지름을 먼저 쓴다(free.js 가 판단)
+  const Hpx = cfg.force_scale === 'ball' ? byBall.map((v, i) => { const w = isNum(v) ? v : isNum(byTorso[i]) ? byTorso[i] : byShin[i]; Hsrc.push(isNum(v) ? 'ball' : 'torso'); return isNum(w) ? w : null; }) : byTorso.map((v, i) => { if (isNum(v)) { Hsrc.push('torso'); return v; } if (isNum(byShin[i])) { Hsrc.push('shin'); return byShin[i]; } if (isNum(byBall[i])) { Hsrc.push('ball'); return byBall[i]; } Hsrc.push(null); return null; });
   // 바닥 높이(화면 y): 발 가장 낮은 점의 0.6초 창 최대값(달릴 때 발이 떠도 바닥을 잃지 않게)
   const ground = rolling(ts, footLow, 0.6, a => { const b = a.filter(isNum); return b.length ? Math.max(...b) : null; });
 
   const m = {
-    ts, Hpx, ground, hipC, shC,
+    ts, Hpx, Hsrc, ground, hipC, shC, bodyC,
     trunk_ang: [], shoulder_tilt: [], knee_flex_l: [], knee_flex_r: [], hip_flex_l: [], hip_flex_r: [],
     com_h: [], head_drop: [], arm_span: [], sh_width: [],
     foot_l: [], foot_r: [], foot_h_l: [], foot_h_r: [],
@@ -71,11 +81,11 @@ export function measure(c, cfg) {
       }
     }
     m.foot_ball_d.push(fd); m.foot_ball_side.push(fs);
-    m.body_ball_d.push(b && h && H ? dist(b, h) / H : null);
+    m.body_ball_d.push(b && bodyC[i] && H ? dist(b, bodyC[i]) / H : null);
   }
   // 속도(키/초): 엉덩이 중심, 발, 공
-  const vx = deriv(ts, hipC.map((p, i) => p && Hpx[i] ? p.x / Hpx[i] : null));
-  const vy = deriv(ts, hipC.map((p, i) => p && Hpx[i] ? p.y / Hpx[i] : null));
+  const vx = deriv(ts, bodyC.map((p, i) => p && Hpx[i] ? p.x / Hpx[i] : null));
+  const vy = deriv(ts, bodyC.map((p, i) => p && Hpx[i] ? p.y / Hpx[i] : null));
   m.body_vx = vx; m.body_vy = vy;
   m.body_v = vx.map((x, i) => isNum(x) && isNum(vy[i]) ? Math.hypot(x, vy[i]) : null);
   for (const side of ['l', 'r']) {

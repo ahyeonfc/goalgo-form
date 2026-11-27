@@ -74,8 +74,11 @@ export function fixSwaps(frames, pairs = LEG_PAIRS, margin = 0.6) {
 export function clean(raw, cfg) {
   const ts = raw.map(f => f.t);
   // 1) 신뢰도 거르기 → {x,y}|null
+  // 화면 밖 관절은 버린다: 다리만 찍은 영상에서 자세 모델이 화면 위의 몸통을 지어내는 일이 있다(cfg.frame = 처리 화면 크기)
+  const fw = cfg.frame?.w, fh = cfg.frame?.h, m = 0.02;
+  const inside = p => !fw || (p[0] >= -m * fw && p[0] <= (1 + m) * fw && p[1] >= -m * fh && p[1] <= (1 + m) * fh);
   const frames = raw.map(f => ({
-    kp: f.kp ? f.kp.map(p => (p && isNum(p[0]) && p[2] >= cfg.vis_min) ? { x: p[0], y: p[1] } : null) : null,
+    kp: f.kp ? f.kp.map(p => (p && isNum(p[0]) && p[2] >= cfg.vis_min && inside(p)) ? { x: p[0], y: p[1] } : null) : null,
   }));
   // 2) 좌우 뒤바뀜
   const swaps = fixSwaps(frames);
@@ -93,7 +96,19 @@ export function clean(raw, cfg) {
     }));
   }
   // 4) 공: 짧은 끊김만 채움(필터는 하지 않음: 터치 순간 꺾임이 사라지면 안 됨)
-  const ballArr = raw.map(f => (f.ball && f.ball.conf >= cfg.ball_conf_min) ? { x: f.ball.x, y: f.ball.y, r: f.ball.r } : null);
+  let ballArr = raw.map(f => (f.ball && f.ball.conf >= cfg.ball_conf_min) ? { x: f.ball.x, y: f.ball.y, r: f.ball.r } : null);
+  // 튀는 공 버리기: 앞뒤 ball_jump_win 초의 공 위치 중앙값에서 공 지름의 ball_jump 배 넘게 떨어지면 다른 물체로 보고 버린다
+  if (cfg.ball_jump) {
+    const med = a => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
+    ballArr = ballArr.map((b, i) => {
+      if (!b) return null;
+      const xs = [], ys = [];
+      for (let k = i - 1; k >= 0 && ts[i] - ts[k] <= cfg.ball_jump_win; k--) if (ballArr[k]) { xs.push(ballArr[k].x); ys.push(ballArr[k].y); }
+      for (let k = i + 1; k < ballArr.length && ts[k] - ts[i] <= cfg.ball_jump_win; k++) if (ballArr[k]) { xs.push(ballArr[k].x); ys.push(ballArr[k].y); }
+      if (xs.length < 3) return b;
+      return Math.hypot(b.x - med(xs), b.y - med(ys)) > cfg.ball_jump * 2 * b.r ? null : b;
+    });
+  }
   const { out: ball, filled: ballFilled } = fillGaps(ts, ballArr, cfg.ball_gap_sec, ['x', 'y', 'r']);
   return { ts, joints, jointsRaw, ball, ballFilled, filled: filledAny, swaps };
 }

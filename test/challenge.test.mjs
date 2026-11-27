@@ -2,10 +2,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { synthTap, synthPullPush, synthJuggle } from '../js/sim.js';
-import { analyzeTask, progress, checkLevel } from '../js/engine/challenge.js';
+import { synthTap, synthPullPush, synthJuggle } from '../src/sim.js';
+import { analyzeTask, progress, checkLevel } from '../src/engine/challenge.js';
 
-const load = f => JSON.parse(readFileSync(new URL('../criteria/' + f, import.meta.url)));
+const load = f => JSON.parse(readFileSync(new URL('../public/criteria/' + f, import.meta.url)));
 const criteria = { dribble: load('dribble.json'), challenge: load('challenge.json') };
 const run = (taskId, s, level = 1, history = [], profile = { foot: 'r' }) => analyzeTask(s.raw, { taskId, level, heightCm: 175, fps: s.fps, criteria, history, profile });
 const pr = r => r.task.prims;
@@ -65,7 +65,7 @@ test('리프팅: 12개 → 떨어뜨림 → 6개, 최고 연속 12', () => {
   const r = run('juggle', s);
   assert.equal(pr(r).best, 12, `최고 연속 ${pr(r).best}, 전체 ${pr(r).total}, 떨어뜨림 ${pr(r).drops}`);
   assert.ok(Math.abs(pr(r).total - 18) <= 1, `전체 ${pr(r).total}`);
-  assert.equal(pr(r).drops, 1);
+  assert.equal(pr(r).drops, 2); // 가운데 한 번 + 영상 끝에서 공이 바닥으로 떨어짐
   assert.ok(Math.abs(pr(r).foot_ratio - 50) <= 10, `왼발 비율 ${pr(r).foot_ratio}`);
   assert.ok(Math.abs(pr(r).apex - 0.65) < 0.08, `공 높이 ${pr(r).apex}`);
   assert.equal(r.task.passed, true);

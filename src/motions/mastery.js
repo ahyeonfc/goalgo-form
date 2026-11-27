@@ -24,8 +24,14 @@ export function tapTouches(m, cfg) {
 // 당기고 밀기 터치: 공 움직임이 바뀐 터치(엔진 findTouches)를 쓰고,
 // 터치 직후 공이 몸(엉덩이) 쪽으로 가면 당기기, 멀어지면 밀기로 나눈다.
 export function pullPushTouches(m, ev) {
-  return ev.touches.map(tc => {
-    const i = tc.i, b = m.ball[i], h = m.hipC[i];
+  return ev.touches.map(tc0 => {
+    // 터치 시각 다듬기: 발-공 가장 가까운 순간은 발이 들어오는 방향에 따라 밀리므로, ±0.15초 안에서 공 가로 속도 부호가 바뀐 순간으로
+    let tc = tc0;
+    const [w0, w1] = idxRange(m.ts, tc0.t - 0.15, tc0.t + 0.15);
+    let best = null;
+    for (let k = Math.max(1, w0); k < w1; k++) { const a = m.ball_vx[k - 1], b = m.ball_vx[k]; if (isNum(a) && isNum(b) && a * b < 0) { if (best == null || Math.abs(m.ts[k] - tc0.t) < Math.abs(m.ts[best] - tc0.t)) best = k; } }
+    if (best != null) tc = { ...tc0, i: best, t: m.ts[best] };
+    const i = tc.i, b = m.ball[i], h = m.bodyC[i];
     const [a, e] = idxRange(m.ts, tc.t + 1e-3, tc.t + 0.12);
     const vx = mean(m.ball_vx.slice(a, e)), vy = mean(m.ball_vy.slice(a, e));
     let kind = 'push';

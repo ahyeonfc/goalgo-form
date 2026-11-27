@@ -31,6 +31,10 @@ export function juggleEvents(c, m, cfg) {
       continue;
     }
     if (after - hgt[i] < cfg.jg_bounce) continue;
+    // 닿은 직후(0.15초 안) 공이 분명히 올라가야 진짜 닿음. 발 위에 가만히 놓인 공의 잡음을 거른다
+    let soon = -9;
+    for (let k = i + 1; k < n && ts[k] - ts[i] <= 0.15; k++) if (isNum(hgt[k])) soon = Math.max(soon, hgt[k]);
+    if (soon - hgt[i] < cfg.jg_kick) continue;
     // 내려오다 올라감(이어 차기) 또는, 앞 닿음 없이 위로 확 올라감(처음 띄우기: 발로 띄우거나 손에서 놓은 공)
     const prevC = contacts[contacts.length - 1];
     const fresh = !prevC || ts[i] - prevC.t > cfg.jg_gap || drops.some(d => d.t > prevC.t);
@@ -41,6 +45,7 @@ export function juggleEvents(c, m, cfg) {
       const d = dist(p, ball[i]) / Hpx[i];
       if (d <= cfg.jg_part_dist && (!best || d < best.d)) best = { part, d };
     }
+    if (!best) continue; // 몸(발·무릎·머리) 가까이에서만 닿음
     const prev = contacts[contacts.length - 1];
     if (prev && ts[i] - prev.t < cfg.jg_min_gap) continue;
     contacts.push({ t: ts[i], i, part: best ? best.part : null, h: hgt[i] });

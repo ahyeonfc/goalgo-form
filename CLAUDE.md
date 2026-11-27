@@ -6,7 +6,7 @@
 ## 작업 규칙
 - **대화, 메모, 요약, 작업 기록은 모두 한국어로 작성한다. 사용자가 영어를 요청한 경우에만 영어를 사용한다.** 도구 호출 사이 한 줄 진행 메모, 다음 단계 상자 요약까지 예외 없음. 코드 식별자·명령어만 원문.
 - 설명, 주석, 화면 문구는 한국어.
-- **수정할 때마다 올리지 않는다.** 변경 내용을 먼저 보여 주고 확인받은 뒤 한 번에 올린다.
+- **올리기(2026-11-27 사용자 결정으로 바꿈):** 기능 하나마다 올리지 않고, 크게 묶어서 **확인 없이 자동으로** 올린다(main 에 반영). 첫 업로드는 "상용화해도 충분하다" 싶은 수준일 때 한 번, 이후 큰 묶음마다. 올린 뒤에는 무엇이 바뀌었는지 짧게 알린다.
 - 사용자는 주로 **폰에서** 작업한다. 안내는 폰(모바일 브라우저, GitHub 앱) 기준.
 - 비밀 값(OAuth 비밀, 토큰)은 저장소에 올리지 않는다. 웹 OAuth 클라이언트 ID 는 공개돼도 되는 값이라 코드에 둬도 된다.
 - 숫자 기준값은 실제로 확인한 출처만 쓰고, 없으면 "개인 비교"로 둔다. 지어내지 않는다.
@@ -23,39 +23,34 @@
 | 형태 | 웹 앱(PWA), GitHub Pages. 홈 화면에 설치하면 갤러리 "공유" 목록에 뜸(웹 공유 대상) |
 | 사용 흐름 | **찍은 영상만 넘기면 됨**. 과제 고르기·찍는 자리 안내 단계 없음. 동작·찍은 방향·정해진 코스는 자동 판별, 틀리면 결과 화면에서 고침 |
 | 촬영 | 폰 기본 카메라(슬로모션 포함). 슈팅·달리기 시간 지표는 120fps 필요(30fps 면 그 지표만 뺌) |
-| 분석 위치 | 폰 브라우저(MediaPipe Pose + 공 감지기 ONNX, 두 번 훑기). Colab 은 정확도가 부족할 때 대안 |
+| 분석 위치 | 폰 브라우저(MediaPipe Pose + 공 감지기, 두 번 훑기). 지금 공은 EfficientDet-Lite2 + 사람 주변 확대(우리 ONNX 는 아직). Colab 은 정확도가 부족할 때 대안 |
+| 촬영 원칙 | **머리부터 발끝까지 몸 전체 + 3~4m + 폰 고정**. 다리만 찍으면 MediaPipe 가 몸을 지어내 쓸 수 없음(2026-11-27 샘플로 확인) |
 | 크기 기준 | 공(지름 22cm)과 입력한 키. 콘이 있으면 바닥 평면 변환으로 더 정확 |
 | 저장 | 폰(IndexedDB)에 바로, 내 드라이브 `골고폼/` 에 백업. 결과는 바로, **원본 영상은 와이파이일 때만**. 원본은 기한 없이 보관, 지우기 전 사용자에게 묻기. 갤러리 영상은 앱이 지우지 않음 |
 | 구글 등록 | 새 Google Cloud 프로젝트, 동의 화면 프로덕션, 웹 OAuth 클라이언트, drive.file (아직 안 함) |
 | 지표 체계 | 6층: ①기본 측정값 → ②사건 → ③동작·단계 → ④지표(속도·퍼포먼스·자세 세 축, 갤로핑 8round 틀) → ⑤기준과 점수 → ⑥피드백 |
 | 동작 순서 | 드리블 → 슈팅 → 퍼스트 터치 → 패스 → 달리기·민첩성 |
 
-## 구조
+## 구조 (0.4.0, 2026-11-27: TypeScript + React + Vite 로 옮김)
 ```
-CLAUDE.md, README.md
-docs/lesson-criteria.md     지표 체계 큰 설계
-docs/lesson-build.md        구현 설계(0절 별개 원칙, 1 흐름, 3 보정, 4 분석 위치, 5 엔진, 6 기준표 JSON, 7 정답 도구, 8 저장, 10 만드는 순서)
-docs/challenge.md           도전 모드(항목·과제·변형·단계 구조, 공 다루기 사다리, 판정 방법)
-docs/lesson/01~05-*.md      동작별 ③~⑥: 훈련 방식(권장)·찍는 자리(권장)·단계·지표·기준값(출처)·점수·고칠 말
-bench/index.html            폰 브라우저 분석 속도 시험(MediaPipe tasks-vision 0.10.14: 자세 lite/full/heavy, 공 EfficientDet-Lite0/2 "sports ball", GPU/CPU, 처리 너비, 훑는 간격). MP4 파일 안 장면 시간표(mdhd·stts)로 fps·슬로모션 저장 방식 확인. 결과 복사(JSON). 로컬 시험은 ?src=_local/test.mp4
-bench/_local/               로컬 시험 영상(.gitignore, 올리지 않음)
-index.html, css/app.css     웹 앱 화면(첫 설정 → 영상 고르기·받은 영상 → 분석 중 → 결과 → 설정)
-manifest.webmanifest, sw.js 설치(PWA)·갤러리 공유 받기(share_target POST ./share-target → IndexedDB inbox)·오프라인 저장(모듈 서비스 워커)
-icons/                      앱 아이콘(svg, 192·512 png, maskable)
-js/app.js                   화면 흐름, 두 번 훑기 실행, 장면 사진(JPEG 최대 8장), 결과 그리기
-js/scan.js                  영상 → 장면별 원재료 raw {t, kp[33][x,y,vis], ball{x,y,r,conf}}. MediaPipe 자세 + 공(EfficientDet-Lite0 "sports ball", 우리 ONNX 생기면 교체). GPU 안 되면 CPU
-js/store.js                 IndexedDB(kv 프로필·설정, inbox 받은 영상, results 결과+원재료 gzip+장면 사진)
-js/mp4info.js               MP4 정보(촬영 시각 mvhd, fps·장면 간격 stts)
-js/engine/                  공통 엔진(DOM 없음, Node 시험 가능): util, clean(빈칸·One Euro·좌우 뒤바뀜), measure(①, 장면별 키 = 몸통÷0.288), events(② 걸음·터치·임팩트·디딤·방향 전환·멈춤), calib(키·공 크기), score(⑤), index(입구, 개인 비교 기준선)
-js/engine/challenge.js      도전 모드: 과제 분석·단계 판정(내 기록 대비 규칙)·진행
-js/motions/mastery.js, juggle.js  공 다루기(토 탭·당기고 밀기)·리프팅 세기
-js/sim.js, js/demo.js       합성 동작(시험·시범 공용), 시범 애니메이션(설명용, 기준 아님)
-criteria/challenge.json     도전 과제·단계·하는 법·찍는 자리·엔진 숫자
-js/motions/dribble.js       드리블 구간(터치 1.5초 안 간격 4번 이상)·지표 기본값
-criteria/dribble.json       드리블 기준표(6절 형식) + 엔진 설정 숫자(engine 칸, 첫 판)
-test/                       엔진 자동 시험(`npm test`, Node 22). synth.mjs 가 정답을 아는 합성 드리블 원재료를 만든다
+index.html                   Vite 시작 파일(→ src/main.tsx)
+vite.config.ts, tsconfig.json  빌드·형식 검사(엔진 .js 는 allowJs, 화면·흐름은 .ts/.tsx strict)
+.github/workflows/ci.yml     모든 브랜치: 시험 → 형식 검사 → 빌드. main: GitHub Pages 배포(Settings → Pages → Source = GitHub Actions 필요)
+src/
+  main.tsx, config.ts        시작, 버전·기능 스위치(SHOW_CHALLENGE)·기본 설정·동작 아이콘
+  ui/                        React 화면: App(화면 전환·뒤로 가기), Setup, Home, Run, Result, Replay(관절 선 다시 보기), SettingsView, app.css
+  lib/                       pipeline.ts(영상 → 원재료 → 엔진 → 장면 사진 → 저장, 다시 계산), draw.ts(관절 선), fmt.ts, types.ts(결과 형식)
+  scan.js                    MediaPipe 자세 + 공(EfficientDet-Lite2 전체 + 사람 주변 확대, 몸 가깝고 이어지는 공, 가만히 있는 공 거르기)
+  store.js, mp4info.js       IndexedDB(kv·inbox·results), MP4 정보
+  engine/                    clean(화면 밖 관절·튀는 공 버림, 빈칸, One Euro, 좌우 뒤바뀜), measure(키 기준: 몸통→정강이→공, force_scale), events, calib, free(자유 분석 입구·자세 믿음 검사), coach(코칭 문장집), score, index(옛 드리블 점수), challenge(도전 모드)
+  motions/                   juggle, mastery(토 탭·당기고 밀기), dribble, kick(패스·슈팅)
+  sim.js, demo.js            합성 동작(시험·도전 시범 공용), 시범 애니메이션(도전 모드 화면은 0.4.0 에서 아직 안 옮김)
+public/                      그대로 배포: manifest, sw.js(공유 받기·저장본, store.js 와 같은 IndexedDB 구조), icons/, criteria/*.json(기준표·엔진 숫자), bench/(속도 시험)
+test/                        npm test(Node): engine·challenge·free 시험 24개. synth.mjs = 합성 드리블
+docs/                        설계(lesson-*), 도전 모드(challenge.md), 자유 분석(free-analysis.md)
 ```
-- 로컬 미리보기: `D:\개인\.claude\launch.json` 의 "goalgo-form"(python http.server 8767).
+- 로컬 미리보기: `npm run dev`(개발) / `npm run build && npx vite preview`. 편집 도구는 IntelliJ Ultimate·WebStorm·VS Code.
+- 기술 결정(2026-11-27, 사용자 "맘대로 만들어"): 언어 TypeScript 하나(엔진은 JS 그대로 + 차례로 TS), 화면 React, 빌드 Vite, 배포 GitHub Actions → Pages. 서버 없음. 나중에 결제·공유는 서버리스(Node), 서버 GPU 분석은 Python. 엔진은 화면과 분리돼 서버로 옮길 수 있음.
 
 ## 진행 상태
 - [x] 지표 체계·동작 5개·구현 설계 문서 (2026-11-27)
@@ -65,4 +60,6 @@ test/                       엔진 자동 시험(`npm test`, Node 22). synth.mjs
   - 아직 없음: 콘 찾기·코스(코스 시간·드리블 손실·속도·정확도는 빈칸), 동작 고치기("무슨 동작인가요?"), 드리블 외 동작, 드라이브 백업, 우리 공 감지기 ONNX
   - 확인할 것: 삼성 슬로모션 파일이 실제 120fps 시각으로 저장되는지(아니면 시간 지표가 4배 틀림), 폰 속도(bench), 엔진 숫자(터치 거리 등)는 정답 도구 시험으로 맞춤
 - [x] (0.2.0, 2026-11-27, 폰 시험 전) 도전 모드: 공 다루기 3개(토 탭, 당기고 인사이드·아웃사이드 밀기) + 리프팅. 과제 화면(시범 애니메이션·하는 법·찍는 자리·4단계), 단계 판정(2번 통과하면 다음), 일지(날짜별 기록 + 메모). 시험 18개 통과, 클라우드 Chromium 흐름 확인. 미는 발 = 당긴 발로 가정(사용자 확인 대기)
+- [x] (0.3.0, 2026-11-27, 폰 시험 전) 자유 분석 코칭: 구간 자동 알아채기(리프팅·패스/슈팅·토 탭·당기고 밀기·드리블), 코칭 카드(잘한 점·고칠 점 2개·오늘의 연습·찍는 팁), 관절 선 다시 보기, 새 화면 디자인, 공 찾기 개선(Lite2 + 사람 주변 확대 + 쓰는 공 고르기), 몸이 잘린 영상 알아채기, 화면 밖 관절 버리기, 올린 직후 옛 파일 섞임 고침. 도전 모드는 처음 화면에서 숨김(SHOW_CHALLENGE). Pexels 샘플 13개로 시험(docs/free-analysis.md)
+- [x] (0.4.0, 2026-11-27, 브랜치만, 공개 전) TypeScript + React + Vite 로 옮김, GitHub Actions(시험·빌드·배포). 공 찾기: 가만히 있는 공 거르기, 튀는 공 버리기, 몸 잘림이면 공 크기로 다시 재기. 리프팅 판정 다듬음(천천히 하는 허벅지 리프팅). 샘플 10349012 정답(직접 장면 보고 6번) 대비 4번 맞힘 — 상용화 전 정확도 더 필요
 - [ ] 드리블 끝까지 → 구글 등록·드라이브 백업 → 정답 도구로 시험 → 나머지 동작
