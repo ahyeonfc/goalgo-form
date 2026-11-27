@@ -104,14 +104,14 @@ export function analyzeFree(raw, opts) {
     if (bo) {
       general = bo;
       for (let k = notes.length - 1; k >= 0; k--) if (notes[k].kind === 'warn') notes.splice(k, 1);
-      notes.push({ kind: 'info', text: '몸이 화면에 다 나오지 않아 공 움직임만으로 코칭했어요. 무릎 위까지 보이게 찍으면 자세도 봐 드려요.' });
+      notes.push({ kind: 'info', text: '몸이 화면에 다 나오지 않아 공 움직임만으로 분석했어요. 무릎 위까지 보이게 찍으면 자세도 봐 드려요.' });
     }
   }
   if (poseOk && !segs.length && !(general && general.span)) {
     const ballSeen = c.ball.filter(Boolean).length / Math.max(1, n), poseSeen = m.bodyC.filter(Boolean).length / Math.max(1, n);
     if (ballSeen < 0.5) notes.push({ kind: 'warn', text: '공이 잘 안 보였어요. 공이 화면에서 너무 작지 않게(3~5m) 찍어 주세요.' });
     else if (poseSeen < 0.6) notes.push({ kind: 'warn', text: '몸이 잘 안 보였어요. 머리부터 발끝까지 화면에 들어오게 찍어 주세요.' });
-    else notes.push({ kind: 'info', text: '움직임이 거의 없어 코칭할 장면을 찾지 못했어요.' });
+    else notes.push({ kind: 'info', text: '움직임이 거의 없어 분석할 장면을 찾지 못했어요.' });
   }
   if (fps < 50 && segs.some(s => s.motion === 'shot' || s.motion === 'pass')) notes.push({ kind: 'info', text: '슬로모션(120fps)으로 찍으면 공 속도와 차는 순간을 더 정확히 봐 드릴 수 있어요.' });
 

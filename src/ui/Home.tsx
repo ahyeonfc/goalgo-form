@@ -110,7 +110,7 @@ function RecItem({ r, open }: { r: Rec; open: (id: string) => void }) {
   const fix = (r.result.general?.fixes || [])[0] || segs.flatMap(x => x.coach?.fixes || [])[0];
   return <button className="item" onClick={() => open(r.id)}>
     <span className="ic">{ms.length ? MOTION_IC[ms[0]] : '🧑‍🏫'}</span>
-    <span className="k"><b>{ms.length ? ms.map(x => MK[x]).join(' · ') : r.result.general?.span ? '훈련 영상' : '코칭할 장면 없음'}</b><span>{r.lesson.slice(5)} {hhmm(r.takenAt)} · {fix ? '🔧 ' + fix.title : r.name}{r.memo ? ' · 📝' : ''}</span></span>
+    <span className="k"><b>{ms.length ? ms.map(x => MK[x]).join(' · ') : r.result.general?.span ? '훈련 영상' : '분석할 장면 없음'}</b><span>{r.lesson.slice(5)} {hhmm(r.takenAt)} · {fix ? '🔧 ' + fix.title : r.name}{r.memo ? ' · 📝' : ''}</span></span>
     <span className="go">›</span></button>;
 }
 

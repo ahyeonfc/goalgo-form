@@ -42,7 +42,7 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
     <>
       <div className="sum">
         <div className="meta">{rec.lesson} {hhmm(rec.takenAt)} · {fmtT(r.dur)} · {Math.round(r.scan?.srcFps || r.fps)}fps · {VIEW_KO[r.view.view]}에서 찍음</div>
-        <h2>{g ? '영상을 보고 코칭했어요' : segs.length ? `${josa(motions.map(x => MOTION_IC[x] + ' ' + MK[x]).join(', '), '을', '를')} 알아챘어요` : '코칭할 장면을 찾지 못했어요'}</h2>
+        <h2>{g ? '영상을 보고 분석했어요' : segs.length ? `${josa(motions.map(x => MOTION_IC[x] + ' ' + MK[x]).join(', '), '을', '를')} 알아챘어요` : '분석할 장면을 찾지 못했어요'}</h2>
         <div className="chips">
           {segs.length > 0 && <><span className="chip on">👍 잘한 점 {nGood}</span><span className="chip">🔧 고칠 점 {nFix}</span></>}
           <span className="chip">🧍 몸 {Math.round(r.poseSeen * 100)}%</span><span className="chip">⚽ 공 {Math.round(r.ballSeen * 100)}%</span>
@@ -54,7 +54,7 @@ export function Result({ ctx, rec: rec0 }: { ctx: Ctx; rec: Rec }) {
 
       <div hidden={tab !== 'coach'}>
       {(r.notes || []).map((n, i) => <div key={i} className={'note' + (n.kind === 'warn' ? ' warn' : '')}>{n.text}</div>)}
-      {!g && !segs.length && <div className="nofix">코칭할 장면을 찾지 못했어요. "🦴 다시 보기"에서 몸·공이 제대로 잡혔는지 확인해 보세요.</div>}
+      {!g && !segs.length && <div className="nofix">분석할 장면을 찾지 못했어요. "🦴 다시 보기"에서 몸·공이 제대로 잡혔는지 확인해 보세요.</div>}
       {!g && segs.length > 0 && <div className="nofix">동작별 코칭은 "➕ 자세히"에 있어요.</div>}
 
       {g && (
