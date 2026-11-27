@@ -34,7 +34,10 @@ export function SettingsView({ ctx }: { ctx: Ctx }) {
         <button className="main" onClick={save}>저장</button></div>
       <div className="card"><h2>저장 공간</h2><p className="sub">{usage}</p>
         <p className="sub">코칭 기록은 이 폰(브라우저 저장소)에 있어요. 영상은 갤러리에 그대로 두고 복사하지 않아요.</p></div>
-      <p className="ver">골고 폼 {APP_VER}</p>
+      <div className="card"><h2>약관·방침</h2>
+        <p className="sub"><a href="privacy.html" style={{ color: 'var(--acc)' }}>개인정보처리방침</a> · <a href="terms.html" style={{ color: 'var(--acc)' }}>이용약관</a></p>
+        <p className="sub">영상과 분석 결과는 이 폰 밖으로 나가지 않아요.</p></div>
+      <p className="ver">골고 폼 {APP_VER} (베타)</p>
     </>
   );
 }

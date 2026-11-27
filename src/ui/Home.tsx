@@ -71,6 +71,7 @@ export function Home({ ctx }: { ctx: Ctx }) {
             <span className="k"><b>{ms.length ? ms.map(x => MK[x]).join(' · ') : '동작을 찾지 못함'}</b><span>{hhmm(r.takenAt)} · {fix ? '🔧 ' + fix.title : r.name}{r.memo ? ' · 📝' : ''}</span></span>
             <span className="go">›</span></button>];
         })}
+      <p className="ver">영상과 분석 결과는 이 폰 밖으로 나가지 않아요 · <a href="privacy.html">개인정보처리방침</a> · <a href="terms.html">이용약관</a></p>
     </>
   );
 }

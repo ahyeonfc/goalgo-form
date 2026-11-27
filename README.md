@@ -16,7 +16,8 @@
 | [docs/lesson/](docs/lesson/) | 동작별 지표·기준값·점수·고칠 말 (드리블, 슈팅, 퍼스트 터치, 패스, 달리기·민첩성) |
 
 ## 상태
-0.3.0 (2026-11-27, 폰 시험 전): 자유 분석 코칭(리프팅·토 탭·당기고 밀기·드리블·패스·슈팅 자동 구분, 잘한 점·고칠 점·오늘의 연습, 관절 선 다시 보기). 도전 모드는 잠시 숨김. 영상 고르기·갤러리 공유 받기, 폰 안 분석(MediaPipe 자세 + 공), 공통 엔진, 드리블 점수·고칠 점, 폰 저장.
+0.5.0 베타 (2026-11-27): 찍은 훈련 영상을 넘기면 리프팅·토 탭·당기고 밀기·드리블·패스·슈팅을 알아채고, 잘한 점·고칠 점·오늘의 연습·지난번과 비교·성장 리포트를 보여 줍니다. 슬로모션 자동 보정, 관절 선 다시 보기. 분석은 폰 안에서만(영상이 밖으로 나가지 않음).
 - 앱: https://ahyeonfc.github.io/goalgo-form/
 - 속도 시험: https://ahyeonfc.github.io/goalgo-form/bench/
-- 엔진 시험: `npm test`
+- 개발: `npm install` → `npm run dev` / 시험 `npm test` / 빌드 `npm run build` (TypeScript + React + Vite)
+- 개인정보처리방침: https://ahyeonfc.github.io/goalgo-form/privacy.html · 이용약관: …/terms.html
