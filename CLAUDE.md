@@ -1,7 +1,7 @@
 # 골고 폼 (GoalGo Form) — 개인 훈련 영상 자세·기술 분석 웹 앱
 
 폰으로 찍은 축구 개인 레슨·훈련 영상을 넘기면 폰 브라우저 안에서 분석해 동작별 점수, 지난번 대비 변화, 고칠 점을 보여 준다.
-이름은 2026-11-27 결정(사용자). 저장소 `ahyeonfc/goalgo-form`(공개). GitHub Pages 2026-11-27 켬(0.5.0 부터 GitHub Actions 가 빌드해 배포: Settings → Pages → Source = GitHub Actions): `https://ahyeonfc.github.io/goalgo-form/`, 시험 페이지 `…/bench/`.
+이름은 2026-11-27 결정(사용자). 저장소 `ahyeonfc/goalgo-form`(공개). GitHub Pages 2026-11-27 켬(0.5.0 부터 GitHub Actions 가 빌드해 배포. Pages 설정은 "브랜치에서 배포" 그대로라, ci.yml 배포가 2분 기다렸다 옛 방식 배포를 덮어씀. 사용자가 설정을 못 찾아 이 방식으로 우회, 2026-11-27): `https://ahyeonfc.github.io/goalgo-form/`, 시험 페이지 `…/bench/`.
 
 ## 작업 규칙
 - **대화, 메모, 요약, 작업 기록은 모두 한국어로 작성한다. 사용자가 영어를 요청한 경우에만 영어를 사용한다.** 도구 호출 사이 한 줄 진행 메모, 다음 단계 상자 요약까지 예외 없음. 코드 식별자·명령어만 원문.
@@ -35,7 +35,7 @@
 ```
 index.html                   Vite 시작 파일(→ src/main.tsx)
 vite.config.ts, tsconfig.json  빌드·형식 검사(엔진 .js 는 allowJs, 화면·흐름은 .ts/.tsx strict)
-.github/workflows/ci.yml     모든 브랜치: 시험 → 형식 검사 → 빌드. main: GitHub Pages 배포(Settings → Pages → Source = GitHub Actions 필요)
+.github/workflows/ci.yml     모든 브랜치: 시험 → 형식 검사 → 빌드. main: 2분 기다린 뒤 GitHub Pages 배포(옛 방식 배포를 덮어씀)
 src/
   main.tsx, config.ts        시작, 버전·기능 스위치(SHOW_CHALLENGE)·기본 설정·동작 아이콘
   lib/compare.ts             전후 비교·성장 리포트
