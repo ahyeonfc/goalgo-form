@@ -36,12 +36,15 @@ CLAUDE.md, README.md
 docs/lesson-criteria.md     지표 체계 큰 설계
 docs/lesson-build.md        구현 설계(0절 별개 원칙, 1 흐름, 3 보정, 4 분석 위치, 5 엔진, 6 기준표 JSON, 7 정답 도구, 8 저장, 10 만드는 순서)
 docs/lesson/01~05-*.md      동작별 ③~⑥: 훈련 방식(권장)·찍는 자리(권장)·단계·지표·기준값(출처)·점수·고칠 말
+bench/index.html            폰 브라우저 분석 속도 시험(MediaPipe tasks-vision 0.10.14: 자세 lite/full/heavy, 공 EfficientDet-Lite0/2 "sports ball", GPU/CPU, 처리 너비, 훑는 간격). MP4 파일 안 장면 시간표(mdhd·stts)로 fps·슬로모션 저장 방식 확인. 결과 복사(JSON). 로컬 시험은 ?src=_local/test.mp4
+bench/_local/               로컬 시험 영상(.gitignore, 올리지 않음)
 ```
+- 로컬 미리보기: `D:\개인\.claude\launch.json` 의 "goalgo-form"(python http.server 8767).
 
 ## 진행 상태
 - [x] 지표 체계·동작 5개·구현 설계 문서 (2026-11-27)
 - [x] 저장소 만들기, 문서 옮기기 (2026-11-27)
-- [ ] 폰 브라우저 분석 속도·공 찾기 시험 페이지
+- [x] 폰 브라우저 분석 속도·공 찾기 시험 페이지 `bench/` (2026-11-27, PC 확인: 인텔 내장 그래픽 960px 자세 full 약 14ms·공 Lite0 약 30ms/장. 폰 시험 전, 우리 공 감지기 ONNX 는 아직)
 - [ ] 공통 엔진 + 보정 + 기준표 JSON
 - [ ] 웹 앱 설치·갤러리 공유 받기
 - [ ] 드리블 끝까지 → 구글 등록·드라이브 백업 → 정답 도구로 시험 → 나머지 동작

@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>골고 폼 · 분석 속도 시험</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#2a2f3a;--txt:#e8eaf0;--sub:#9aa3b2;--acc:#3ddc97;--warn:#ffb020;--bad:#ff5d5d}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+  main{max-width:720px;margin:0 auto;padding:16px}
+  h1{font-size:20px;margin:4px 0 2px}
+  .sub{color:var(--sub);font-size:13px;margin:0 0 14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 12px}
+  .card h2{font-size:15px;margin:0 0 10px}
+  label{display:block;font-size:13px;color:var(--sub);margin:8px 0 4px}
+  select,input[type=number]{width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:#0c0e12;color:var(--txt);font-size:15px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .file{display:block;padding:18px;border:2px dashed var(--line);border-radius:12px;text-align:center;color:var(--sub);cursor:pointer}
+  .file input{display:none}
+  button{width:100%;padding:14px;border:0;border-radius:10px;background:var(--acc);color:#04120b;font-weight:700;font-size:16px;margin-top:10px}
+  button.sec{background:#2a2f3a;color:var(--txt);font-weight:600}
+  button:disabled{opacity:.45}
+  .bar{height:8px;background:#0c0e12;border-radius:4px;overflow:hidden;margin-top:10px}
+  .bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+  #stat{font-size:13px;color:var(--sub);margin-top:6px;min-height:20px}
+  canvas{width:100%;border-radius:8px;background:#000;display:block}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td{padding:6px 4px;border-bottom:1px solid var(--line)}
+  td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .ok{color:var(--acc)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+  .note{font-size:13px;color:var(--sub)}
+  pre{white-space:pre-wrap;word-break:break-all;font-size:11px;color:var(--sub);max-height:160px;overflow:auto;background:#0c0e12;padding:8px;border-radius:8px}
+</style>
+</head>
+<body>
+<main>
+  <h1>골고 폼 · 분석 속도 시험</h1>
+  <p class="sub">이 폰의 브라우저에서 자세 찾기와 공 찾기가 얼마나 빠르고 잘 되는지 확인합니다. 영상은 폰 밖으로 나가지 않습니다.</p>
+
+  <div class="card">
+    <h2>1. 영상 고르기</h2>
+    <label class="file" id="drop">
+      <input type="file" id="file" accept="video/*">
+      <span id="fileTxt">여기를 눌러 영상을 고르세요<br><span class="note">일반 30fps 영상, 120fps 영상, 슬로모션 영상을 각각 시험해 보세요</span></span>
+    </label>
+    <table id="meta" style="margin-top:10px;display:none"></table>
+  </div>
+
+  <div class="card">
+    <h2>2. 설정</h2>
+    <div class="row">
+      <div><label>자세 모델</label>
+        <select id="poseModel">
+          <option value="lite">가벼움 (lite)</option>
+          <option value="full" selected>보통 (full)</option>
+          <option value="heavy">무거움 (heavy)</option>
+        </select></div>
+      <div><label>공 찾기 모델</label>
+        <select id="ballModel">
+          <option value="efficientdet_lite0" selected>가벼움 (EfficientDet-Lite0)</option>
+          <option value="efficientdet_lite2">정확 (EfficientDet-Lite2)</option>
+          <option value="off">끄기</option>
+        </select></div>
+    </div>
+    <div class="row">
+      <div><label>계산 장치</label>
+        <select id="delegate">
+          <option value="GPU" selected>GPU</option>
+          <option value="CPU">CPU</option>
+        </select></div>
+      <div><label>처리 너비(px)</label>
+        <select id="width">
+          <option>640</option><option selected>960</option><option>1280</option>
+        </select></div>
+    </div>
+    <div class="row">
+      <div><label>훑는 간격</label>
+        <select id="step">
+          <option value="10">초당 10장</option>
+          <option value="30" selected>초당 30장</option>
+          <option value="all">모든 장면(원래 fps)</option>
+        </select></div>
+      <div><label>시험 길이(초, 처음부터)</label>
+        <input type="number" id="secs" value="10" min="1" max="120"></div>
+    </div>
+    <button id="run" disabled>시험 시작</button>
+    <button id="stop" class="sec" style="display:none">멈추기</button>
+    <div class="bar"><i id="prog"></i></div>
+    <div id="stat"></div>
+  </div>
+
+  <div class="card">
+    <h2>3. 화면</h2>
+    <canvas id="cv" width="960" height="540"></canvas>
+    <p class="note">초록 선 = 찾은 자세, 노란 네모 = 찾은 공</p>
+  </div>
+
+  <div class="card" id="resCard" style="display:none">
+    <h2>4. 결과</h2>
+    <table id="res"></table>
+    <button id="copy" class="sec">결과 복사 (대화창에 붙여 넣기용)</button>
+    <pre id="raw"></pre>
+  </div>
+</main>
+
+<script type="module">
+const VER = '0.10.14';
+const CDN = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VER}`;
+const POSE_URL = m => `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${m}/float16/1/pose_landmarker_${m}.task`;
+const BALL_URL = m => `https://storage.googleapis.com/mediapipe-models/object_detector/${m}/float16/1/${m}.tflite`;
+// MediaPipe 33점 중 몸통·팔·다리 연결(얼굴 잔점은 뺌)
+const EDGES = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[27,29],[29,31],[27,31],[24,26],[26,28],[28,30],[30,32],[28,32]];
+
+const $ = id => document.getElementById(id);
+const video = document.createElement('video');
+video.muted = true; video.playsInline = true; video.preload = 'auto';
+// 화면 구조에 붙어 있어야 브라우저가 장면을 그리고 장면 알림(requestVideoFrameCallback)을 보낸다. 거의 안 보이게 둔다.
+video.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none';
+document.body.appendChild(video);
+const cv = $('cv'), ctx = cv.getContext('2d');
+let vision = null, file = null, meta = null, stopFlag = false, lastResult = null;
+
+const say = t => $('stat').textContent = t;
+const fmt = (n, d = 1) => (n == null || !isFinite(n)) ? '—' : n.toFixed(d);
+const median = a => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y); const h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
+const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
+
+function gpuName() {
+  try { const g = document.createElement('canvas').getContext('webgl'); const e = g.getExtension('WEBGL_debug_renderer_info'); return e ? g.getParameter(e.UNMASKED_RENDERER_WEBGL) : '알 수 없음'; } catch (e) { return '알 수 없음'; }
+}
+
+// 영상의 실제 fps 를 잰다: 1초쯤 재생하며 장면마다 영상 시각(mediaTime) 간격을 모은다.
+function measureFps() {
+  return new Promise(res => {
+    if (!('requestVideoFrameCallback' in HTMLVideoElement.prototype)) return res({ fps: NaN, how: '지원 안 됨' });
+    const ts = []; let n = 0;
+    const done = () => { video.pause(); const d = []; for (let i = 1; i < ts.length; i++) d.push(ts[i] - ts[i - 1]); const m = median(d.filter(x => x > 0)); res({ fps: m ? 1 / m : NaN, how: `${ts.length}장 재생` }); };
+    const cb = (now, md) => { ts.push(md.mediaTime); if (++n < 45 && !video.ended) video.requestVideoFrameCallback(cb); else done(); };
+    video.currentTime = 0; video.playbackRate = 1;
+    video.requestVideoFrameCallback(cb);
+    video.play().catch(() => res({ fps: NaN, how: '재생 실패' }));
+    setTimeout(() => { if (n < 45) done(); }, 4000);
+  });
+}
+
+// MP4 파일 안의 장면 시간표(moov > trak(영상) > mdhd 시간 단위, stts 장면 간격)를 직접 읽는다.
+// 재생 없이 원래 fps 와 장면 수를 알 수 있고, 슬로모션 파일이 어떻게 저장됐는지(간격이 섞여 있는지)도 보인다.
+async function mp4Info(f) {
+  const rd = async (o, n) => new DataView(await f.slice(o, o + n).arrayBuffer());
+  const typ = (dv, o) => String.fromCharCode(dv.getUint8(o), dv.getUint8(o + 1), dv.getUint8(o + 2), dv.getUint8(o + 3));
+  // 맨 위 상자들을 건너뛰며 moov 찾기(moov 가 파일 끝에 있어도 됨)
+  let off = 0, moov = null;
+  while (off + 8 <= f.size) {
+    const h = await rd(off, 16); let size = h.getUint32(0), t = typ(h, 4), hdr = 8;
+    if (size === 1) { size = Number(h.getBigUint64(8)); hdr = 16; } else if (size === 0) size = f.size - off;
+    if (t === 'moov') { moov = await rd(off, size); break; }
+    if (size < 8) break; off += size;
+  }
+  if (!moov) return null;
+  const kids = (dv, s, e) => { const out = []; let o = s; while (o + 8 <= e) { let sz = dv.getUint32(o), hd = 8; if (sz === 1) { sz = Number(dv.getBigUint64(o + 8)); hd = 16; } if (sz < 8) break; out.push({ t: typ(dv, o + 4), s: o + hd, e: o + sz }); o += sz; } return out; };
+  const find = (dv, s, e, path) => { let cur = [{ s, e }]; for (const p of path) { const n = []; for (const c of cur) for (const k of kids(dv, c.s, c.e)) if (k.t === p) n.push(k); cur = n; } return cur; };
+  for (const trak of find(moov, 8, moov.byteLength, ['trak'])) {
+    const hd = find(moov, trak.s, trak.e, ['mdia', 'hdlr'])[0];
+    if (!hd || typ(moov, hd.s + 8) !== 'vide') continue;
+    const md = find(moov, trak.s, trak.e, ['mdia', 'mdhd'])[0];
+    const v = moov.getUint8(md.s);
+    const scale = v === 1 ? moov.getUint32(md.s + 20) : moov.getUint32(md.s + 12);
+    const dur = v === 1 ? Number(moov.getBigUint64(md.s + 24)) : moov.getUint32(md.s + 16);
+    const st = find(moov, trak.s, trak.e, ['mdia', 'minf', 'stbl', 'stts'])[0];
+    const n = moov.getUint32(st.s + 4); const ent = [];
+    for (let i = 0; i < n; i++) ent.push({ c: moov.getUint32(st.s + 8 + i * 8), d: moov.getUint32(st.s + 12 + i * 8) });
+    const samples = ent.reduce((a, x) => a + x.c, 0);
+    const top = [...ent].sort((a, b) => b.c - a.c)[0];
+    const minD = Math.min(...ent.map(x => x.d).filter(x => x > 0));
+    return { scale, durSec: dur / scale, samples, mainFps: scale / top.d, maxFps: scale / minD, avgFps: samples / (dur / scale), mixed: new Set(ent.map(x => x.d)).size > 2 };
+  }
+  return null;
+}
+
+function showMeta() {
+  const m = meta.mp4;
+  const rows = [
+    ['파일', `${file.name}`],
+    ['크기', `${fmt(file.size / 1048576, 1)} MB`],
+    ['해상도', `${video.videoWidth} × ${video.videoHeight}`],
+    ['길이', `${fmt(video.duration, 2)} 초`],
+    ['fps (파일 정보)', m ? `${fmt(m.mainFps, 1)} · 장면 ${m.samples}개${m.mixed ? ' · <b class="warn">장면 간격이 섞여 있음(슬로모션 구간 가능)</b> 가장 촘촘한 곳 ' + fmt(m.maxFps, 0) + 'fps' : ''}` : '읽지 못함(MP4 가 아닐 수 있음)'],
+    ['fps (재생으로 잼)', `${fmt(meta.fps, 1)} (${meta.how})`],
+  ];
+  $('meta').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  $('meta').style.display = '';
+}
+
+$('file').addEventListener('change', async e => {
+  file = e.target.files[0]; if (!file) return;
+  await loadVideo(URL.createObjectURL(file), file);
+});
+
+async function loadVideo(url, f) {
+  file = f; $('fileTxt').textContent = f.name; say('영상 읽는 중…');
+  video.src = url;
+  await new Promise((ok, bad) => { video.onloadedmetadata = ok; video.onerror = () => bad(new Error('이 영상을 열 수 없습니다')); }).catch(e => { say(e.message); throw e; });
+  meta = await measureFps();
+  try { meta.mp4 = await mp4Info(f); } catch (e) { meta.mp4 = null; }
+  // 분석에 쓸 fps: 파일 정보가 있으면 그것, 없으면 재생으로 잰 값
+  meta.useFps = meta.mp4 ? meta.mp4.mainFps : meta.fps;
+  showMeta(); $('run').disabled = false; say('준비됨. 설정을 고르고 "시험 시작"을 누르세요.');
+}
+
+async function seekTo(t) {
+  return new Promise(ok => {
+    const h = () => { video.removeEventListener('seeked', h); ok(); };
+    video.addEventListener('seeked', h);
+    video.currentTime = t;
+  });
+}
+
+function draw(pose, balls, W, H) {
+  ctx.drawImage(video, 0, 0, W, H);
+  if (pose && pose.landmarks && pose.landmarks[0]) {
+    const p = pose.landmarks[0];
+    ctx.strokeStyle = '#3ddc97'; ctx.lineWidth = Math.max(2, W / 320);
+    for (const [a, b] of EDGES) { if (p[a].visibility < .5 || p[b].visibility < .5) continue; ctx.beginPath(); ctx.moveTo(p[a].x * W, p[a].y * H); ctx.lineTo(p[b].x * W, p[b].y * H); ctx.stroke(); }
+    ctx.fillStyle = '#3ddc97';
+    for (const i of [27, 28, 29, 30, 31, 32]) { if (p[i].visibility < .5) continue; ctx.beginPath(); ctx.arc(p[i].x * W, p[i].y * H, ctx.lineWidth * 1.5, 0, 7); ctx.fill(); }
+  }
+  ctx.strokeStyle = '#ffd400'; ctx.lineWidth = Math.max(2, W / 320);
+  for (const b of balls) { const bb = b.boundingBox; ctx.strokeRect(bb.originX, bb.originY, bb.width, bb.height); }
+}
+
+async function makeModels(poseM, ballM, delegate) {
+  const { FilesetResolver, PoseLandmarker, ObjectDetector } = await import(`${CDN}/vision_bundle.mjs`);
+  if (!vision) vision = await FilesetResolver.forVisionTasks(`${CDN}/wasm`);
+  const t0 = performance.now();
+  const pose = await PoseLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: POSE_URL(poseM), delegate }, runningMode: 'VIDEO', numPoses: 1 });
+  let ball = null;
+  if (ballM !== 'off') ball = await ObjectDetector.createFromOptions(vision, { baseOptions: { modelAssetPath: BALL_URL(ballM), delegate }, runningMode: 'VIDEO', scoreThreshold: 0.2, categoryAllowlist: ['sports ball'], maxResults: 3 });
+  return { pose, ball, loadMs: performance.now() - t0 };
+}
+
+$('stop').onclick = () => { stopFlag = true; };
+
+$('run').onclick = async () => {
+  const poseM = $('poseModel').value, ballM = $('ballModel').value, delegate = $('delegate').value;
+  const W = +$('width').value, H = Math.round(W * video.videoHeight / video.videoWidth);
+  const secs = Math.min(+$('secs').value || 10, video.duration);
+  const srcFps = isFinite(meta.useFps) ? meta.useFps : 30;
+  const stepFps = $('step').value === 'all' ? srcFps : Math.min(+$('step').value, srcFps);
+  const dt = 1 / stepFps;
+  cv.width = W; cv.height = H;
+  $('run').disabled = true; $('stop').style.display = ''; stopFlag = false; $('resCard').style.display = 'none';
+
+  let models;
+  try { say('모델 내려받는 중… (처음 한 번은 시간이 걸립니다)'); models = await makeModels(poseM, ballM, delegate); }
+  catch (e) {
+    say('모델을 불러오지 못했습니다: ' + e.message + (delegate === 'GPU' ? ' → 계산 장치를 CPU로 바꿔 다시 해 보세요.' : ''));
+    $('run').disabled = false; $('stop').style.display = 'none'; return;
+  }
+
+  const seekMs = [], poseMs = [], ballMs = [];
+  let frames = 0, poseHit = 0, ballHit = 0, footHit = 0, mono = 0;
+  // 첫 계산은 GPU 준비 때문에 매우 느리다. 미리 두 번 돌리고 시간 계산에서 뺀다.
+  say('준비 계산 중…'); await seekTo(0); ctx.drawImage(video, 0, 0, W, H);
+  let w0 = performance.now();
+  for (let k = 0; k < 2; k++) { mono += 1; models.pose.detectForVideo(cv, mono); if (models.ball) models.ball.detectForVideo(cv, mono); }
+  const warmMs = performance.now() - w0;
+  const wall0 = performance.now();
+  const total = Math.floor(secs / dt) + 1;
+
+  for (let i = 0; i < total && !stopFlag; i++) {
+    const t = Math.min(i * dt, video.duration - 0.001);
+    let a = performance.now(); await seekTo(t); seekMs.push(performance.now() - a);
+    ctx.drawImage(video, 0, 0, W, H);
+    mono += Math.max(1, Math.round(dt * 1000));   // MediaPipe 영상 모드는 시각이 늘 늘어나야 함
+    a = performance.now(); const pr = models.pose.detectForVideo(cv, mono); poseMs.push(performance.now() - a);
+    let balls = [];
+    if (models.ball) { a = performance.now(); const br = models.ball.detectForVideo(cv, mono); ballMs.push(performance.now() - a); balls = br.detections || []; }
+    const lm = pr.landmarks && pr.landmarks[0];
+    if (lm) { poseHit++; if ([29, 30, 31, 32].some(k => lm[k].visibility >= .5)) footHit++; }
+    if (balls.length) ballHit++;
+    frames++;
+    draw(pr, balls, W, H);
+    if (i % 3 === 0) { $('prog').style.width = (100 * (i + 1) / total).toFixed(0) + '%'; say(`${i + 1} / ${total} 장 · 자세 ${fmt(avg(poseMs), 0)}ms · 공 ${fmt(avg(ballMs), 0)}ms`); await new Promise(r => setTimeout(r, 0)); }
+  }
+  const wallS = (performance.now() - wall0) / 1000;
+  const covered = frames * dt;
+  models.pose.close(); if (models.ball) models.ball.close();
+
+  const perFrame = (median(seekMs) || 0) + (median(poseMs) || 0) + (ballMs.length ? median(ballMs) : 0);
+  const ratio = wallS / covered;           // 영상 1초를 이 설정으로 훑는 데 걸린 초
+  const full30 = (perFrame / 1000) * 30;   // 초당 30장으로 영상 1초 처리에 드는 초(추정)
+  lastResult = {
+    ver: 'bench-1', date: new Date().toISOString(), ua: navigator.userAgent, gpu: gpuName(),
+    video: { w: video.videoWidth, h: video.videoHeight, dur: +video.duration.toFixed(2), fps: +fmt(meta.useFps, 1), playFps: +fmt(meta.fps, 1), mp4: meta.mp4 ? { main: +fmt(meta.mp4.mainFps, 2), max: +fmt(meta.mp4.maxFps, 1), avg: +fmt(meta.mp4.avgFps, 2), n: meta.mp4.samples, mixed: meta.mp4.mixed } : null, mb: +fmt(file.size / 1048576, 1) },
+    set: { pose: poseM, ball: ballM, delegate, width: W, stepFps: +fmt(stepFps, 1), secs },
+    loadMs: Math.round(models.loadMs), warmMs: Math.round(warmMs), frames, coveredSec: +fmt(covered, 2), wallSec: +fmt(wallS, 2), ratio: +fmt(ratio, 2),
+    ms: { seek: +fmt(median(seekMs), 1), pose: +fmt(median(poseMs), 1), poseAvg: +fmt(avg(poseMs), 1), ball: ballMs.length ? +fmt(median(ballMs), 1) : null, ballAvg: ballMs.length ? +fmt(avg(ballMs), 1) : null },
+    hit: { pose: +fmt(100 * poseHit / frames, 0), foot: +fmt(100 * footHit / frames, 0), ball: models.ball ? +fmt(100 * ballHit / frames, 0) : null },
+    est30: +fmt(full30, 2), stopped: stopFlag
+  };
+  showResult(lastResult);
+  $('run').disabled = false; $('stop').style.display = 'none'; $('prog').style.width = '100%';
+  say(stopFlag ? '멈췄습니다. 여기까지의 결과입니다.' : '끝났습니다.');
+};
+
+function cls(v, good, ok) { return v <= good ? 'ok' : v <= ok ? 'warn' : 'bad'; }
+function showResult(r) {
+  const rows = [
+    ['모델 준비 시간', `${fmt(r.loadMs / 1000, 1)} 초 (첫 계산 준비 ${fmt(r.warmMs / 1000, 1)} 초)`],
+    ['훑은 장면', `${r.frames} 장 (영상 ${r.coveredSec}초 분량)`],
+    ['걸린 시간', `${r.wallSec} 초`],
+    ['영상 1초에 걸린 시간', `<b class="${cls(r.ratio, 1.5, 4)}">${r.ratio} 초</b>`],
+    ['장면 하나: 영상 넘기기 (중앙값)', `${r.ms.seek} ms`],
+    ['장면 하나: 자세 찾기 (중앙값)', `${r.ms.pose} ms (평균 ${r.ms.poseAvg})`],
+    ['장면 하나: 공 찾기 (중앙값)', r.hit.ball == null ? '끔' : `${r.ms.ball} ms (평균 ${r.ms.ballAvg})`],
+    ['초당 30장 기준 영상 1초 처리(추정)', `<b class="${cls(r.est30, 1.5, 4)}">${r.est30} 초</b>`],
+    ['자세를 찾은 장면', `${r.hit.pose}%`],
+    ['발(뒤꿈치·발끝)이 보인 장면', `${r.hit.foot}%`],
+    ['공을 찾은 장면', r.hit.ball == null ? '—' : `<b class="${r.hit.ball >= 80 ? 'ok' : r.hit.ball >= 50 ? 'warn' : 'bad'}">${r.hit.ball}%</b>`],
+  ];
+  $('res').innerHTML = rows.map(x => `<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('');
+  $('raw').textContent = JSON.stringify(r);
+  $('resCard').style.display = '';
+}
+
+$('copy').onclick = async () => {
+  const t = JSON.stringify(lastResult);
+  try { await navigator.clipboard.writeText(t); say('결과를 복사했습니다. 대화창에 붙여 넣어 주세요.'); }
+  catch (e) { const s = getSelection(), r = document.createRange(); r.selectNodeContents($('raw')); s.removeAllRanges(); s.addRange(r); say('자동 복사가 안 됩니다. 아래 글자를 길게 눌러 복사해 주세요.'); }
+};
+
+// 로컬 시험용: 주소 뒤에 ?src=파일경로 를 붙이면 그 영상을 바로 연다.
+const qs = new URLSearchParams(location.search).get('src');
+if (qs) fetch(qs).then(r => r.blob()).then(b => loadVideo(URL.createObjectURL(b), new File([b], qs.split('/').pop(), { type: b.type }))).catch(e => say('시험 영상을 못 열었습니다: ' + e.message));
+</script>
+</body>
+</html>
