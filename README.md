@@ -14,4 +14,7 @@
 | [docs/lesson/](docs/lesson/) | 동작별 지표·기준값·점수·고칠 말 (드리블, 슈팅, 퍼스트 터치, 패스, 달리기·민첩성) |
 
 ## 상태
-설계 단계 (2026-11-27). 다음: 폰 브라우저 분석 속도·공 찾기 시험.
+0.1.0 (2026-11-27, 폰 시험 전): 영상 고르기·갤러리 공유 받기, 폰 안 분석(MediaPipe 자세 + 공), 공통 엔진, 드리블 점수·고칠 점, 폰 저장.
+- 앱: https://ahyeonfc.github.io/goalgo-form/
+- 속도 시험: https://ahyeonfc.github.io/goalgo-form/bench/
+- 엔진 시험: `npm test`

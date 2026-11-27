@@ -38,6 +38,17 @@ docs/lesson-build.md        구현 설계(0절 별개 원칙, 1 흐름, 3 보정
 docs/lesson/01~05-*.md      동작별 ③~⑥: 훈련 방식(권장)·찍는 자리(권장)·단계·지표·기준값(출처)·점수·고칠 말
 bench/index.html            폰 브라우저 분석 속도 시험(MediaPipe tasks-vision 0.10.14: 자세 lite/full/heavy, 공 EfficientDet-Lite0/2 "sports ball", GPU/CPU, 처리 너비, 훑는 간격). MP4 파일 안 장면 시간표(mdhd·stts)로 fps·슬로모션 저장 방식 확인. 결과 복사(JSON). 로컬 시험은 ?src=_local/test.mp4
 bench/_local/               로컬 시험 영상(.gitignore, 올리지 않음)
+index.html, css/app.css     웹 앱 화면(첫 설정 → 영상 고르기·받은 영상 → 분석 중 → 결과 → 설정)
+manifest.webmanifest, sw.js 설치(PWA)·갤러리 공유 받기(share_target POST ./share-target → IndexedDB inbox)·오프라인 저장(모듈 서비스 워커)
+icons/                      앱 아이콘(svg, 192·512 png, maskable)
+js/app.js                   화면 흐름, 두 번 훑기 실행, 장면 사진(JPEG 최대 8장), 결과 그리기
+js/scan.js                  영상 → 장면별 원재료 raw {t, kp[33][x,y,vis], ball{x,y,r,conf}}. MediaPipe 자세 + 공(EfficientDet-Lite0 "sports ball", 우리 ONNX 생기면 교체). GPU 안 되면 CPU
+js/store.js                 IndexedDB(kv 프로필·설정, inbox 받은 영상, results 결과+원재료 gzip+장면 사진)
+js/mp4info.js               MP4 정보(촬영 시각 mvhd, fps·장면 간격 stts)
+js/engine/                  공통 엔진(DOM 없음, Node 시험 가능): util, clean(빈칸·One Euro·좌우 뒤바뀜), measure(①, 장면별 키 = 몸통÷0.288), events(② 걸음·터치·임팩트·디딤·방향 전환·멈춤), calib(키·공 크기), score(⑤), index(입구, 개인 비교 기준선)
+js/motions/dribble.js       드리블 구간(터치 1.5초 안 간격 4번 이상)·지표 기본값
+criteria/dribble.json       드리블 기준표(6절 형식) + 엔진 설정 숫자(engine 칸, 첫 판)
+test/                       엔진 자동 시험(`npm test`, Node 22). synth.mjs 가 정답을 아는 합성 드리블 원재료를 만든다
 ```
 - 로컬 미리보기: `D:\개인\.claude\launch.json` 의 "goalgo-form"(python http.server 8767).
 
@@ -45,6 +56,7 @@ bench/_local/               로컬 시험 영상(.gitignore, 올리지 않음)
 - [x] 지표 체계·동작 5개·구현 설계 문서 (2026-11-27)
 - [x] 저장소 만들기, 문서 옮기기 (2026-11-27)
 - [x] 폰 브라우저 분석 속도·공 찾기 시험 페이지 `bench/` (2026-11-27, PC 확인: 인텔 내장 그래픽 960px 자세 full 약 14ms·공 Lite0 약 30ms/장. 폰 시험 전, 우리 공 감지기 ONNX 는 아직)
-- [ ] 공통 엔진 + 보정 + 기준표 JSON
-- [ ] 웹 앱 설치·갤러리 공유 받기
+- [x] (0.1.0, 2026-11-27, 폰 시험 전) 공통 엔진 + 보정(키·공, 콘 없음) + 드리블 기준표 JSON, 웹 앱 설치·갤러리 공유 받기·폰 저장·결과 화면. 합성 자료 시험 9개 통과, 클라우드 Chromium 에서 첫 설정→분석→결과 흐름 오류 없음(사람이 찍힌 실제 영상으로는 아직 안 돌려 봄)
+  - 아직 없음: 콘 찾기·코스(코스 시간·드리블 손실·속도·정확도는 빈칸), 동작 고치기("무슨 동작인가요?"), 드리블 외 동작, 드라이브 백업, 우리 공 감지기 ONNX
+  - 확인할 것: 삼성 슬로모션 파일이 실제 120fps 시각으로 저장되는지(아니면 시간 지표가 4배 틀림), 폰 속도(bench), 엔진 숫자(터치 거리 등)는 정답 도구 시험으로 맞춤
 - [ ] 드리블 끝까지 → 구글 등록·드라이브 백업 → 정답 도구로 시험 → 나머지 동작
